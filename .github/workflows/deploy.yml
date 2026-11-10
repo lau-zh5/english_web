@@ -4,6 +4,14 @@ name: 部署到 CloudBase（备用通道）
 # 该方式构建环境预装已登录的 CLI，免 API 密钥，且会自动读取 cloudbaserc.json
 # 一次部署静态托管 + 云函数 + /api 网关路由。
 #
+# 流水线里填（环境变量需配置 AUTH_SECRET）：
+#   安装/构建命令：
+#     npm ci && npm run build && node scripts/cloud-function-smoke.cjs && printf 'AUTH_SECRET=%s\n' "$AUTH_SECRET" > .env.local
+#   部署命令：
+#     tcb validate && tcb deploy --dry-run && tcb deploy --yes
+# 说明：{{env.AUTH_SECRET}} 从 .env.local 读取；tcb deploy 不构建，只上传 dist，
+#       所以必须先 npm run build；--yes 用于非交互环境放行函数覆盖确认。
+#
 # 本 workflow 是备用通道，只在手动触发时运行，避免未配置密钥时 push 即失败。
 # 启用前在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
 #   TCB_SECRET_ID   腾讯云 API SecretId
@@ -48,8 +56,12 @@ jobs:
       - name: 登录云开发
         run: tcb login --apiKeyId "${{ secrets.TCB_SECRET_ID }}" --apiKey "${{ secrets.TCB_SECRET_KEY }}"
 
+      - name: 校验声明式配置（schema / envId / 资源引用）
+        run: tcb validate
+
       - name: 校验声明式部署计划（不实际部署）
         run: tcb deploy --dry-run -e "${{ secrets.TCB_ENV_ID }}"
 
       - name: 声明式部署（静态托管 + 云函数 + 网关路由）
-        run: tcb deploy -e "${{ secrets.TCB_ENV_ID }}"
+        # --yes：非交互环境下放行「覆盖已存在函数」确认，否则云端会保守跳过
+        run: tcb deploy --yes -e "${{ secrets.TCB_ENV_ID }}"
