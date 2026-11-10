@@ -80,7 +80,8 @@ export function Layout({ children }: LayoutProps) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6">
+        {/* Logo 图片自带透明留白，去掉容器底部内边距，避免与下方菜单之间出现大块空白 */}
+        <div className="px-6 pt-6 pb-0">
           <Link 
             to="/" 
             onClick={() => setSidebarOpen(false)}
@@ -95,7 +96,7 @@ export function Layout({ children }: LayoutProps) {
           </Link>
         </div>
 
-        <nav className="mt-8 px-3">
+        <nav className="mt-3 px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
