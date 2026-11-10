@@ -1,0 +1,28 @@
+# ---------- 依赖与构建产物 ----------
+node_modules/
+api/node_modules/
+dist/
+*.tsbuildinfo
+*.log
+
+# ---------- 本地私密配置 ----------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---------- 本机工作数据与备份（含数据库导出，不进仓库） ----------
+.workbuddy/
+
+# ---------- 旧版本地媒体资源：用户上传内容不导入云端 ----------
+info/
+api/info/
+
+# ---------- 编辑器 / 系统 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---------- CloudBase CLI 本地状态 ----------
+.cloudbase/

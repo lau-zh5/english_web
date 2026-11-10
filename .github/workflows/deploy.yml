@@ -1,0 +1,52 @@
+name: 部署到 CloudBase（备用通道）
+
+# 主通道推荐：CloudBase 控制台 → 流水线管理 → 授权 GitHub 仓库。
+# 该方式构建环境预装已登录的 CLI，免 API 密钥，且会自动读取 cloudbaserc.json
+# 一次部署静态托管 + 云函数 + /api 网关路由。
+#
+# 本 workflow 是备用通道，只在手动触发时运行，避免未配置密钥时 push 即失败。
+# 启用前在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
+#   TCB_SECRET_ID   腾讯云 API SecretId
+#   TCB_SECRET_KEY  腾讯云 API SecretKey
+#   TCB_ENV_ID      cloud1-d5giiwkzidd6e6c60
+#   AUTH_SECRET     登录 token 签名密钥（随机长字符串）
+# 需要 push 自动部署时，把下面 on 改成：on: { push: { branches: [main] } }
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 云函数离线冒烟测试
+        run: node scripts/cloud-function-smoke.cjs
+
+      - name: 安装 CloudBase CLI
+        run: npm install -g @cloudbase/cli
+
+      - name: 写入动态变量（供 cloudbaserc.json 的 {{env.AUTH_SECRET}} 解析）
+        run: printf 'AUTH_SECRET=%s\n' "${{ secrets.AUTH_SECRET }}" > .env.local
+
+      - name: 登录云开发
+        run: tcb login --apiKeyId "${{ secrets.TCB_SECRET_ID }}" --apiKey "${{ secrets.TCB_SECRET_KEY }}"
+
+      - name: 声明式部署（静态托管 + 云函数 + 网关路由）
+        run: tcb deploy -e "${{ secrets.TCB_ENV_ID }}"

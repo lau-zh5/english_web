@@ -1,0 +1,13 @@
+{
+  "name": "english-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "English Web HTTP API on CloudBase free plan (document database)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.18.0"
+  }
+}

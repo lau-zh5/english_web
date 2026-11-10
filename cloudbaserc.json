@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
+  "envId": "cloud1-d5giiwkzidd6e6c60",
+  "region": "ap-shanghai",
+  "functionRoot": "cloudbase/functions",
+  "functions": [
+    {
+      "name": "english-api",
+      "handler": "index.main",
+      "runtime": "Nodejs18.15",
+      "timeout": 20,
+      "memorySize": 256,
+      "installDependency": true,
+      "envVariables": {
+        "AUTH_SECRET": "{{env.AUTH_SECRET}}"
+      }
+    }
+  ],
+  "hosting": [
+    {
+      "name": "web",
+      "root": ".",
+      "framework": "static",
+      "outputDir": "dist",
+      "deployPath": "/"
+    }
+  ],
+  "gateway": {
+    "routes": [
+      { "path": "/api", "target": "function:english-api" },
+      { "path": "/", "target": "hosting:web" }
+    ]
+  }
+}

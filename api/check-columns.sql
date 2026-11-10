@@ -1,0 +1,10 @@
+-- 检查并添加缺失的列
+ALTER TABLE words ADD COLUMN IF NOT EXISTS last_reviewed_at DATETIME DEFAULT NULL;
+ALTER TABLE words ADD COLUMN IF NOT EXISTS review_count INT DEFAULT 0;
+
+-- 如果 ALTER TABLE 不支持 IF NOT EXISTS，使用以下方式
+-- ALTER TABLE words ADD COLUMN last_reviewed_at DATETIME DEFAULT NULL;
+-- ALTER TABLE words ADD COLUMN review_count INT DEFAULT 0;
+
+-- 验证列是否存在
+DESCRIBE words;

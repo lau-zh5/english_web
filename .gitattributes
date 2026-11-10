@@ -1,0 +1,6 @@
+# CI / 云端统一使用 LF，避免 Windows CRLF 导致脚本执行失败
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary
