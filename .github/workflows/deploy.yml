@@ -4,11 +4,11 @@ name: 部署到 CloudBase（备用通道）
 # 该方式构建环境预装已登录的 CLI，免 API 密钥，且会自动读取 cloudbaserc.json
 # 一次部署静态托管 + 云函数 + /api 网关路由。
 #
-# 流水线里填（环境变量需配置 AUTH_SECRET）：
-#   安装/构建命令：
-#     npm ci && npm run build && node scripts/cloud-function-smoke.cjs && printf 'AUTH_SECRET=%s\n' "$AUTH_SECRET" > .env.local
-#   部署命令：
-#     tcb validate && tcb deploy --dry-run && tcb deploy --yes
+# 流水线「简易命令」模式是三个独立输入框，分别在高级设置里配 AUTH_SECRET：
+#   安装命令：npm ci
+#   构建命令：npm run build && node scripts/cloud-function-smoke.cjs && printf 'AUTH_SECRET=%s\n' "$AUTH_SECRET" > .env.local
+#   部署命令：tcb validate && tcb deploy --dry-run && tcb deploy --yes
+#   目标目录：./    分支：main    自动部署：开
 # 说明：{{env.AUTH_SECRET}} 从 .env.local 读取；tcb deploy 不构建，只上传 dist，
 #       所以必须先 npm run build；--yes 用于非交互环境放行函数覆盖确认。
 #
