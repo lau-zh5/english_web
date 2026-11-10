@@ -711,3 +711,191 @@
     transform: none !important;
   }
 }
+
+/* ============================================================
+   精细控件覆盖层：弹出菜单 / 状态标签 / 实心胶囊
+   这些控件结构与普通按钮不同，必须脱离「44px 玻璃按钮」规则，
+   否则每个菜单项都会被撑成独立白块（见 2026-11-10 截图反馈）。
+   放在文件末尾，用更高特异性 + 少量 !important 保证移动端稳定。
+   ============================================================ */
+
+/* 菜单容器：一整块液态玻璃，菜单项只是里面的行/胶囊 */
+.ui-scope .lq-menu {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+.ui-scope .lq-menu.hidden { display: none !important; }
+.ui-scope .lq-menu--col { flex-direction: column; min-width: 128px; }
+.ui-scope .lq-menu--row { flex-direction: row; }
+
+.ui-scope .lq-menu .lq-menu-item {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  width: auto;
+  height: 36px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 11px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--text-1) !important;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  transform: none !important;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.ui-scope .lq-menu .lq-menu-item:hover {
+  background: var(--lq-fill-hover) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.ui-scope .lq-menu .lq-menu-item:active {
+  background: var(--lq-fill-press) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.ui-scope .lq-menu .lq-menu-item[aria-current='true'] {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+.ui-scope .lq-menu .lq-menu-item--danger { color: var(--danger) !important; }
+.ui-scope .lq-menu .lq-menu-item--danger:hover { background: rgba(215, 0, 21, 0.10) !important; }
+.ui-scope .lq-menu .lq-menu-divider {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+.ui-scope .lq-menu-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* 状态标签：紧凑彩色胶囊，不做成 44px 圆形按钮 */
+.ui-scope button.lq-status {
+  position: relative;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font-size: 12px;
+  font-weight: 600;
+  transform: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.ui-scope button.lq-status:hover,
+.ui-scope button.lq-status:active {
+  transform: none !important;
+  box-shadow: none !important;
+  filter: brightness(0.97);
+}
+/* 视觉仍是小胶囊，但把可点热区扩到 44px，满足触屏 HIG */
+.ui-scope button.lq-status::after {
+  content: '';
+  position: absolute;
+  inset: -8px -4px;
+}
+.ui-scope button.lq-status[data-status='new'] { background: rgba(0, 113, 227, 0.13) !important; color: #0060c0 !important; }
+.ui-scope button.lq-status[data-status='learning'] { background: rgba(255, 179, 0, 0.18) !important; color: #a86400 !important; }
+.ui-scope button.lq-status[data-status='mastered'] { background: rgba(36, 138, 61, 0.15) !important; color: #1c7a34 !important; }
+.dark .ui-scope button.lq-status[data-status='new'] { color: #7cc0ff !important; }
+.dark .ui-scope button.lq-status[data-status='learning'] { color: #ffd166 !important; }
+.dark .ui-scope button.lq-status[data-status='mastered'] { color: #6ee49a !important; }
+
+/* 图标按钮：只补居中，玻璃外观仍由通用规则提供 */
+.ui-scope button.lq-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  padding: 0;
+  border-radius: 13px !important;
+  color: var(--text-3);
+  flex: 0 0 auto;
+}
+.ui-scope button.lq-icon-btn svg { flex: 0 0 auto; }
+@media (pointer: coarse) {
+  .ui-scope button.lq-icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+/* 实心胶囊：纯 CSS 渐变，不用 backdrop-filter，避免圆角外出现「没剪干净」的直边 */
+.ui-scope button.lq-chip {
+  position: relative;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #4cd46e, #248a3d) !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow: 0 6px 18px rgba(36, 138, 61, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transform: none !important;
+}
+.ui-scope button.lq-chip:hover {
+  background: linear-gradient(135deg, #5cdb7c, #2a9a46) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 10px 24px rgba(36, 138, 61, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}
+.ui-scope button.lq-chip:active { transform: scale(0.97) !important; }
+/* 视觉 40px，点击热区补到 48px */
+.ui-scope button.lq-chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+/* 右上角主题按钮：真固定、层级最高、背景更实，避免背后内容滚动时产生「跟着滑」的错觉 */
+.lq-theme-toggle {
+  background: var(--glass-bg-strong) !important;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+}

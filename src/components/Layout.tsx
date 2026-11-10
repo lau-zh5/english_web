@@ -68,7 +68,7 @@ export function Layout({ children }: LayoutProps) {
           内容区统一预留 pt-14（56px），按钮仅占 10~46px，不会压住首页日期等顶部内容。 */}
       <button
         onClick={toggleTheme}
-        className="fixed top-2.5 right-3 z-50 flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
+        className="lq-theme-toggle fixed top-2.5 right-3 z-[60] flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
         title={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
         aria-label="切换主题"
       >

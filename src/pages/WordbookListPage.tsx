@@ -103,18 +103,18 @@ export function WordbookListPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">单词书</h1>
-          <button 
-            className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors"
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+          <h1 className="text-2xl font-bold whitespace-nowrap shrink-0">单词书</h1>
+          <button
+            className="lq-chip"
             onClick={() => navigate('/reading/vocabulary')}
           >
             阅读词汇
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => setIsEbookModalOpen(true)}>
             <Plus size={18} />
             导入 PDF

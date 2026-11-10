@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Word } from '../types';
-import { getStatusColor, getStatusLabel } from '../utils/helpers';
+import { getStatusLabel } from '../utils/helpers';
 import { filterMeaning } from '../utils/meaningFilter';
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 
@@ -39,6 +39,7 @@ export function WordCard(props: WordCardProps) {
   const handleStatusClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowStatusMenu(!showStatusMenu);
+    setShowMenu(false);
   };
 
   const handleStatusChange = (e: React.MouseEvent, newStatus: Word['status']) => {
@@ -157,68 +158,62 @@ export function WordCard(props: WordCardProps) {
           )}
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between no-toggle">
           <div className="relative">
             <button
               onClick={handleStatusClick}
-              className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(word.status)}`}
+              className="lq-status"
+              data-status={word.status}
               title="点击切换状态"
+              aria-label="点击切换状态"
             >
               {getStatusLabel(word.status)}
             </button>
             {showStatusMenu && (
-              <div className="absolute left-0 top-full mt-1 bg-white rounded-lg shadow-lg py-1 z-20 min-w-[80px] border border-gray-200">
-                <button
-                  onClick={(e) => handleStatusChange(e, 'new')}
-                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 ${word.status === 'new' ? 'font-bold' : ''}`}
-                >
-                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">新词</span>
-                </button>
-                <button
-                  onClick={(e) => handleStatusChange(e, 'learning')}
-                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 ${word.status === 'learning' ? 'font-bold' : ''}`}
-                >
-                  <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">学习中</span>
-                </button>
-                <button
-                  onClick={(e) => handleStatusChange(e, 'mastered')}
-                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 ${word.status === 'mastered' ? 'font-bold' : ''}`}
-                >
-                  <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700">已掌握</span>
-                </button>
+              <div className="lq-menu lq-menu--row absolute left-0 bottom-full mb-2 no-toggle">
+                {([
+                  { key: 'new', label: '新词', color: '#0a84ff' },
+                  { key: 'learning', label: '学习中', color: '#ffb300' },
+                  { key: 'mastered', label: '已掌握', color: '#34c759' },
+                ] as const).map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={(e) => handleStatusChange(e, s.key)}
+                    className="lq-menu-item"
+                    aria-current={word.status === s.key}
+                    title={s.label}
+                  >
+                    <span className="lq-menu-dot" style={{ background: s.color }} />
+                    {s.label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
           <div className="flex items-center gap-3 no-toggle">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs" style={{ color: 'var(--text-3)' }}>
               复习 {getReviewCountDisplay()} 次
             </span>
             <div className="relative">
               <button
-                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowStatusMenu(false); }}
+                className="lq-icon-btn no-toggle"
                 title="更多操作"
+                aria-label="更多操作"
               >
-                <MoreVertical size={16} className="text-gray-500" />
+                <MoreVertical size={16} />
               </button>
               {showMenu && (
                 <div
-                  className="absolute right-0 bottom-full mb-1 bg-white rounded-lg shadow-lg py-1 z-10 min-w-[100px] border border-gray-200"
+                  className="lq-menu lq-menu--col absolute right-0 bottom-full mb-2 no-toggle"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={handleEdit}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                    title="修改"
-                  >
+                  <button onClick={handleEdit} className="lq-menu-item" title="修改">
                     <Pencil size={14} />
                     <span>修改</span>
                   </button>
-                  <button
-                    onClick={handleDelete}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                    title="删除"
-                  >
+                  <div className="lq-menu-divider" />
+                  <button onClick={handleDelete} className="lq-menu-item lq-menu-item--danger" title="删除">
                     <Trash2 size={14} />
                     <span>删除</span>
                   </button>

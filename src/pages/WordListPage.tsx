@@ -7,7 +7,7 @@ import { Modal } from '../components/Modal';
 import { WordCard } from '../components/WordCard';
 import { useStore } from '../store';
 import { WordStatus } from '../types';
-import { getStatusColor, getStatusLabel } from '../utils/helpers';
+import { getStatusLabel } from '../utils/helpers';
 import { filterMeaning } from '../utils/meaningFilter';
 import { apiFetch, apiUrl } from '../lib/api';
 
@@ -874,34 +874,42 @@ export function WordListPage() {
                               )}
                             </div>
                           )}
-                          <div className="mt-auto flex items-center justify-between">
+                          <div className="mt-auto flex items-center justify-between relative">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const statusMenu = e.currentTarget.nextElementSibling as HTMLElement;
                                 statusMenu.classList.toggle('hidden');
                               }}
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(word.status)}`}
+                              className="lq-status"
+                              data-status={word.status}
+                              title="点击切换状态"
                             >
                               {getStatusLabel(word.status)}
                             </button>
-                            <div className="relative hidden flex-col gap-1 bg-white rounded-lg shadow-lg p-1 border border-gray-200 z-10">
+                            <div className="lq-menu lq-menu--row hidden absolute left-0 bottom-full mb-2">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleGroupStatusChange(word.id, 'new'); }}
-                                className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                className="lq-menu-item"
+                                aria-current={word.status === 'new'}
                               >
+                                <span className="lq-menu-dot" style={{ background: '#0a84ff' }} />
                                 新词
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleGroupStatusChange(word.id, 'learning'); }}
-                                className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                                className="lq-menu-item"
+                                aria-current={word.status === 'learning'}
                               >
+                                <span className="lq-menu-dot" style={{ background: '#ffb300' }} />
                                 学习中
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleGroupStatusChange(word.id, 'mastered'); }}
-                                className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 hover:bg-green-200"
+                                className="lq-menu-item"
+                                aria-current={word.status === 'mastered'}
                               >
+                                <span className="lq-menu-dot" style={{ background: '#34c759' }} />
                                 已掌握
                               </button>
                             </div>

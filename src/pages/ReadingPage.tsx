@@ -236,19 +236,20 @@ export function ReadingPage() {
                   e.preventDefault();
                   setOpenMenuId(openMenuId === article.id ? null : Number(article.id));
                 }}
-                className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors bg-white/80"
+                className="lq-icon-btn"
+                aria-label="更多操作"
               >
-                <MoreVertical size={18} className="text-gray-600" />
+                <MoreVertical size={18} />
               </button>
               {openMenuId === article.id && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 py-1">
+                <div className="lq-menu lq-menu--col absolute right-0 top-full mt-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       handleEditArticle(Number(article.id));
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="lq-menu-item"
                   >
                     <Edit3 size={14} />
                     修改文章
@@ -259,19 +260,19 @@ export function ReadingPage() {
                       e.preventDefault();
                       handleEditQuestions(Number(article.id));
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="lq-menu-item"
                   >
                     <FileText size={14} />
                     修改题目
                   </button>
-                  <div className="border-t border-gray-100 my-1"></div>
+                  <div className="lq-menu-divider" />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       handleDeleteArticleConfirm(Number(article.id));
                     }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="lq-menu-item lq-menu-item--danger"
                   >
                     <Trash2 size={14} />
                     删除此文章
