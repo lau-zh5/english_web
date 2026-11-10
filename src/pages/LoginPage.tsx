@@ -100,11 +100,11 @@ export function LoginPage() {
 
       <button
         onClick={toggleTheme}
-        className="fixed top-4 right-4 z-20 p-2.5 rounded-xl glass text-secondary hover:text-primary transition-all"
+        className="fixed top-2.5 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
         title={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
         aria-label="切换主题"
       >
-        {resolved === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        {resolved === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
       <div className="relative w-full max-w-md">

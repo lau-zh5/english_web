@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { apiFetch, mediaUrl, clearSession } from '../lib/api';
 import { useTheme } from '../lib/theme';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Headphones, FileText, Home, Menu, X, LogOut, User, Moon, Sun, Monitor, Database } from 'lucide-react';
+import { BookOpen, Headphones, FileText, Home, Menu, X, LogOut, User, Moon, Sun, Database } from 'lucide-react';
 import { Logo } from './Logo';
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
     author: "Steve Jobs",
     source: undefined
   });
-  const { mode, resolved, setTheme, toggleTheme } = useTheme();
+  const { resolved, toggleTheme } = useTheme();
   const { currentUser, loadCurrentUser } = useStore();
 
   useEffect(() => {
@@ -59,19 +59,20 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen">
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl glass hover:shadow-lg transition-all"
+        className="lg:hidden fixed top-2.5 left-3 z-50 flex h-9 w-9 items-center justify-center rounded-xl glass shadow-md hover:shadow-lg transition-all"
       >
-        {sidebarOpen ? <X size={24} className="text-secondary" /> : <Menu size={24} className="text-secondary" />}
+        {sidebarOpen ? <X size={18} className="text-secondary" /> : <Menu size={18} className="text-secondary" />}
       </button>
 
-      {/* 任意端口 / 任意设备上都能直接切换主题，不必先展开侧栏 */}
+      {/* 全站唯一的主题切换入口：固定在视口右上角。
+          内容区统一预留 pt-14（56px），按钮仅占 10~46px，不会压住首页日期等顶部内容。 */}
       <button
         onClick={toggleTheme}
-        className="fixed top-4 right-4 z-50 p-2.5 rounded-xl glass text-secondary hover:text-primary transition-all"
+        className="fixed top-2.5 right-3 z-50 flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
         title={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
         aria-label="切换主题"
       >
-        {resolved === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        {resolved === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
       <aside
@@ -115,30 +116,6 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
-          
-          <div className="mt-3 px-2">
-            <p className="text-xs font-medium text-tertiary mb-2 px-2">外观</p>
-            <div className="flex items-center gap-1 p-1 rounded-2xl surface-glass">
-              {([
-                { key: 'light', label: '浅色', icon: Sun },
-                { key: 'dark', label: '深色', icon: Moon },
-                { key: 'system', label: '自动', icon: Monitor },
-              ] as const).map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setTheme(key)}
-                  aria-pressed={mode === key}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 ${
-                    mode === key ? 'text-white shadow-md' : 'text-secondary hover:text-primary'
-                  }`}
-                  style={mode === key ? { background: 'var(--accent)' } : undefined}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </nav>
 
         <div className="absolute bottom-6 left-6 right-6">
@@ -185,7 +162,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <main className="lg:ml-72 min-h-screen">
-        <div className="p-4 lg:p-8">{children}</div>
+        <div className="px-4 pb-4 pt-14 lg:px-8 lg:pb-8 lg:pt-14">{children}</div>
       </main>
     </div>
   );
