@@ -48,5 +48,8 @@ jobs:
       - name: 登录云开发
         run: tcb login --apiKeyId "${{ secrets.TCB_SECRET_ID }}" --apiKey "${{ secrets.TCB_SECRET_KEY }}"
 
+      - name: 校验声明式部署计划（不实际部署）
+        run: tcb deploy --dry-run -e "${{ secrets.TCB_ENV_ID }}"
+
       - name: 声明式部署（静态托管 + 云函数 + 网关路由）
         run: tcb deploy -e "${{ secrets.TCB_ENV_ID }}"
