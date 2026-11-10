@@ -259,6 +259,15 @@ async function route(ctx) {
     });
   }
 
+  /* ---------- 鉴权门槛 ----------
+   * 健康检查 / 注册 / 登录之外，所有接口都必须携带有效 token。
+   * 无 token 时 uidOf() 返回 'public'，此前会返回 200 + 空数据，
+   * 且 /users/:id 可匿名读取他人档案，这里统一收敛为 401。
+   */
+  if (uid === 'public') {
+    return reply(401, { error: '请先登录' });
+  }
+
   const userMatch = /^\/users\/([^/]+)$/.exec(path);
   if (userMatch) {
     const id = decodeURIComponent(userMatch[1]);

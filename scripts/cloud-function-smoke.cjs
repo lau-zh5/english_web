@@ -134,8 +134,11 @@ async function check(label, event, expectStatus, verify) {
   await check('初始单词本为空', ev('GET', '/wordbooks', undefined, token), 200, (d) => Array.isArray(d) && d.length === 0);
   const created = await check('新增单词本', ev('POST', '/wordbooks', { name: '云端测试词书', description: 'free plan' }, token), 201, (d) => d.name === '云端测试词书');
   await check('本人可读', ev('GET', '/wordbooks', undefined, token), 200, (d) => d.length === 1 && d[0].id);
-  await check('未登录用户看不到', ev('GET', '/wordbooks'), 200, (d) => d.length === 0);
-  await check('未登录不能改', ev('PUT', `/wordbooks/${created.id}`, { name: 'hack' }), 404);
+  // 统一鉴权门槛：无 token 一律 401，不再返回 200 空数据 / 404
+  await check('未登录读取被拒', ev('GET', '/wordbooks'), 401, (d) => d.error === '请先登录');
+  await check('未登录不能改', ev('PUT', `/wordbooks/${created.id}`, { name: 'hack' }), 401);
+  await check('未登录不能导出', ev('GET', '/data/export'), 401);
+  await check('未登录不能读他人档案', ev('GET', `/users/${reg.id}`), 401);
   await check('本人可改名', ev('PUT', `/wordbooks/${created.id}`, { name: '改名成功' }, token), 200);
   await check('改名生效', ev('GET', '/wordbooks', undefined, token), 200, (d) => d[0].name === '改名成功');
 
