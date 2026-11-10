@@ -46,6 +46,30 @@
     --input-bg: rgba(255, 255, 255, 0.72);
     --input-border: rgba(15, 23, 42, 0.14);
     --scroll-thumb: rgba(15, 23, 42, 0.20);
+
+    /* 液态玻璃控件色板：按钮/下拉/开关/可点击控件共用 */
+    --lq-fill: rgba(255, 255, 255, 0.55);
+    --lq-fill-hover: rgba(255, 255, 255, 0.74);
+    --lq-fill-press: rgba(255, 255, 255, 0.88);
+    --lq-fill-soft: rgba(255, 255, 255, 0.34);
+    --lq-stroke: rgba(255, 255, 255, 0.82);
+    --lq-stroke-2: rgba(15, 23, 42, 0.10);
+    --lq-shadow: 0 6px 20px rgba(15, 23, 42, 0.09),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      inset 0 -1px 0 rgba(15, 23, 42, 0.04);
+    --lq-shadow-hover: 0 14px 32px rgba(15, 23, 42, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    --lq-shadow-press: 0 2px 8px rgba(15, 23, 42, 0.10),
+      inset 0 2px 6px rgba(15, 23, 42, 0.08);
+    --lq-accent: linear-gradient(135deg, rgba(0, 122, 255, 0.95), rgba(0, 92, 224, 0.95));
+    --lq-accent-hover: linear-gradient(135deg, rgba(28, 138, 255, 1), rgba(0, 104, 238, 1));
+    --lq-accent-shadow: 0 8px 22px rgba(0, 113, 227, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    --lq-danger: linear-gradient(135deg, rgba(255, 96, 96, 0.95), rgba(215, 0, 21, 0.95));
+    --lq-danger-hover: linear-gradient(135deg, rgba(255, 120, 120, 1), rgba(230, 20, 40, 1));
+    --lq-success: linear-gradient(135deg, rgba(72, 205, 110, 0.95), rgba(36, 138, 61, 0.95));
+    --lq-success-hover: linear-gradient(135deg, rgba(92, 220, 128, 1), rgba(42, 156, 70, 1));
+    --lq-ring: rgba(0, 113, 227, 0.42);
   }
 
   html.dark {
@@ -81,6 +105,30 @@
     --input-bg: rgba(44, 44, 52, 0.72);
     --input-border: rgba(255, 255, 255, 0.17);
     --scroll-thumb: rgba(255, 255, 255, 0.26);
+
+    /* 深色下玻璃更暗、高光更克制，文字仍走 --text-1/2/3 保证对比度 */
+    --lq-fill: rgba(46, 46, 56, 0.54);
+    --lq-fill-hover: rgba(62, 62, 74, 0.72);
+    --lq-fill-press: rgba(78, 78, 92, 0.82);
+    --lq-fill-soft: rgba(46, 46, 56, 0.30);
+    --lq-stroke: rgba(255, 255, 255, 0.15);
+    --lq-stroke-2: rgba(255, 255, 255, 0.11);
+    --lq-shadow: 0 8px 24px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+    --lq-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.56),
+      inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    --lq-shadow-press: 0 2px 8px rgba(0, 0, 0, 0.36),
+      inset 0 2px 8px rgba(0, 0, 0, 0.32);
+    --lq-accent: linear-gradient(135deg, rgba(10, 132, 255, 0.92), rgba(0, 84, 210, 0.94));
+    --lq-accent-hover: linear-gradient(135deg, rgba(48, 152, 255, 1), rgba(0, 102, 232, 1));
+    --lq-accent-shadow: 0 8px 22px rgba(10, 132, 255, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    --lq-danger: linear-gradient(135deg, rgba(255, 105, 105, 0.92), rgba(208, 24, 40, 0.94));
+    --lq-danger-hover: linear-gradient(135deg, rgba(255, 132, 132, 1), rgba(230, 46, 62, 1));
+    --lq-success: linear-gradient(135deg, rgba(72, 205, 110, 0.90), rgba(32, 132, 60, 0.94));
+    --lq-success-hover: linear-gradient(135deg, rgba(94, 222, 130, 1), rgba(44, 158, 72, 1));
+    --lq-ring: rgba(10, 132, 255, 0.62);
   }
 
   html {
@@ -336,4 +384,330 @@
 @supports (height: 100dvh) {
   .min-h-screen { min-height: 100dvh; }
   .h-screen { height: 100dvh; }
+}
+
+/* ============================================================
+   液态玻璃控件体系 (Liquid Glass Controls)
+   作用域 .ui-scope = 内容区 <main> + 登录卡片。
+   左侧导航栏、汉堡按钮、右上角主题按钮都在作用域之外，保持原样。
+   设计原则：只改外观（填充／描边／高光／阴影／圆角／按压反馈），
+   不改 display / position / width / padding，避免破坏既有页面布局。
+   ============================================================ */
+
+/* 用自定义属性承载「变体」，hover / active 就能自动沿用正确的颜色 */
+.ui-scope :is(
+  button,
+  [role='button'],
+  select,
+  a[href][class*='rounded-'],
+  a.btn-primary,
+  a.btn-outline,
+  label[class*='cursor-pointer']
+) {
+  --lq-radius: 16px;
+  isolation: isolate;
+  background: var(--lq-current, var(--lq-fill));
+  border: 1px solid var(--lq-current-stroke, var(--lq-stroke));
+  box-shadow: var(--lq-current-shadow, var(--lq-shadow));
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  border-radius: var(--lq-radius);
+  transition:
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+  outline: none;
+}
+
+/* 胶囊与大面积卡片保留原本的圆角语言 */
+.ui-scope :is(
+  button,
+  [role='button'],
+  select,
+  a[href][class*='rounded-'],
+  label[class*='cursor-pointer']
+)[class*='rounded-full'] {
+  --lq-radius: 999px;
+}
+.ui-scope :is(
+  button,
+  a[href][class*='rounded-'],
+  label[class*='cursor-pointer']
+):is([class*='rounded-2xl'], [class*='rounded-3xl']) {
+  --lq-radius: 22px;
+}
+
+/* 主操作：蓝色 translucent 渐变 + 内高光 */
+.ui-scope :is(
+  button[class*='bg-accent-500'],
+  button[class*='bg-blue-500'],
+  button[class*='bg-blue-600'],
+  button[class*='bg-primary-950'],
+  button[class*='bg-apple-blue'],
+  button[class*='from-blue-500'],
+  button[class*='from-blue-600'],
+  button[type='submit'],
+  button.btn-primary,
+  button.lq-btn--primary,
+  a[class*='bg-blue-500'],
+  a.btn-primary,
+  label[class*='bg-blue-500']
+) {
+  --lq-current: var(--lq-accent);
+  --lq-current-hover: var(--lq-accent-hover);
+  --lq-current-press: var(--lq-accent);
+  --lq-current-stroke: rgba(255, 255, 255, 0.3);
+  --lq-current-shadow: var(--lq-accent-shadow);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 危险 / 成功操作 */
+.ui-scope :is(button[class*='bg-red-500'], button[class*='from-red-500'], button.lq-btn--danger) {
+  --lq-current: var(--lq-danger);
+  --lq-current-hover: var(--lq-danger-hover);
+  --lq-current-press: var(--lq-danger);
+  --lq-current-stroke: rgba(255, 255, 255, 0.28);
+  --lq-current-shadow: 0 8px 22px rgba(215, 0, 21, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  color: #fff;
+  font-weight: 600;
+}
+.ui-scope :is(button[class*='bg-green-500'], button[class*='from-green-500'], button.lq-btn--success) {
+  --lq-current: var(--lq-success);
+  --lq-current-hover: var(--lq-success-hover);
+  --lq-current-press: var(--lq-success);
+  --lq-current-stroke: rgba(255, 255, 255, 0.28);
+  --lq-current-shadow: 0 8px 22px rgba(36, 138, 61, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 文字型危险操作（下拉里的「删除」）保留红色语义 */
+.ui-scope :is(button[class*='text-red-600'], button[class*='hover:text-red-500']):not([class*='bg-red-500']) {
+  color: var(--danger);
+}
+
+/* 通用 Button 组件的语义变体 */
+.ui-scope .lq-btn--outline {
+  --lq-current: transparent;
+  --lq-current-hover: var(--lq-accent-soft);
+  --lq-current-press: var(--lq-accent-soft);
+  --lq-current-stroke: var(--accent);
+  --lq-current-shadow: none;
+}
+.ui-scope .lq-btn--ghost {
+  --lq-current: transparent;
+  --lq-current-hover: var(--lq-fill);
+  --lq-current-press: var(--lq-fill-hover);
+  --lq-current-stroke: transparent;
+  --lq-current-shadow: none;
+}
+
+/* 答题反馈：正确 / 错误必须保留状态色，不能被统一玻璃盖掉 */
+.ui-scope :is(button[class*='border-green-500']) {
+  background: rgba(36, 138, 61, 0.14);
+  border: 2px solid var(--success);
+  box-shadow: 0 0 0 3px rgba(36, 138, 61, 0.13), var(--lq-shadow);
+}
+.ui-scope :is(button[class*='border-red-500']) {
+  background: rgba(215, 0, 21, 0.12);
+  border: 2px solid var(--danger);
+  box-shadow: 0 0 0 3px rgba(215, 0, 21, 0.12), var(--lq-shadow);
+}
+.dark .ui-scope :is(button[class*='border-green-500']) { background: rgba(48, 209, 88, 0.16); }
+.dark .ui-scope :is(button[class*='border-red-500']) { background: rgba(255, 107, 107, 0.15); }
+
+/* 纯图标按钮：保持方正，不因触控放大而变成长条 */
+.ui-scope :is(
+  button[class*='p-1'],
+  button[class*='p-2'],
+  button[class*='w-6'],
+  button[class*='w-8'],
+  button[class*='w-9'],
+  button[class*='w-11'],
+  button[class*='w-12']
+):not([class*='w-full']):not([class*='flex-1']):not([class*='absolute']) {
+  --lq-radius: 14px;
+  min-width: 40px;
+  min-height: 40px;
+}
+/* 卡片角落的绝对定位小按钮，尺寸受限，另给一套更小的触控下限 */
+.ui-scope button[class*='absolute'] {
+  --lq-radius: 12px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+/* 交互反馈：hover 只在有鼠标的设备生效，触屏用按压反馈 */
+@media (hover: hover) and (pointer: fine) {
+  .ui-scope :is(
+    button,
+    [role='button'],
+    select,
+    a[href][class*='rounded-'],
+    label[class*='cursor-pointer']
+  ):hover:not(:disabled) {
+    background: var(--lq-current-hover, var(--lq-fill-hover));
+    box-shadow: var(--lq-current-shadow-hover, var(--lq-shadow-hover));
+    transform: translateY(-1px);
+  }
+}
+.ui-scope :is(
+  button,
+  [role='button'],
+  select,
+  a[href][class*='rounded-'],
+  label[class*='cursor-pointer']
+):active:not(:disabled) {
+  background: var(--lq-current-press, var(--lq-fill-press));
+  box-shadow: var(--lq-shadow-press);
+  transform: scale(0.965);
+}
+.ui-scope :is(
+  button,
+  [role='button'],
+  select,
+  a[href][class*='rounded-'],
+  a[href]:not([class*='rounded-']),
+  label[class*='cursor-pointer']
+):focus-visible {
+  outline: 3px solid var(--lq-ring);
+  outline-offset: 2px;
+}
+.ui-scope :is(button, select):disabled {
+  opacity: 0.45;
+  filter: saturate(0.6);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 表单控件：下拉、勾选、单选、滑块 */
+.ui-scope :is(select) {
+  color: var(--text-1);
+  padding-right: 2rem;
+}
+.ui-scope select option {
+  background: var(--surface-solid);
+  color: var(--text-1);
+}
+.ui-scope input[type='checkbox'],
+.ui-scope input[type='radio'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.ui-scope input[type='range'] {
+  min-height: 28px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* 文本输入类控件与按钮共用玻璃语言；解决历史硬编码 bg-white 在暗黑下刺眼的问题 */
+.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='submit']) {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-1);
+  border-radius: 14px;
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  outline: none;
+}
+.ui-scope input::placeholder { color: var(--text-3); opacity: 1; }
+.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.dark .ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/* 纯文字链接：不改外观，只补按压与键盘焦点 */
+.ui-scope a[href]:not([class*='rounded-']) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ui-scope a[href]:not([class*='rounded-']):active {
+  opacity: 0.6;
+  transform: scale(0.97);
+}
+
+/* 可点击卡片：只给按压反馈与焦点环，不改背景，避免干扰翻转卡片 3D */
+.ui-scope div[class*='cursor-pointer'] {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s ease;
+}
+.ui-scope div[class*='cursor-pointer']:not([data-lq-scrub]):active { transform: scale(0.985); }
+.ui-scope div[class*='cursor-pointer']:focus-visible {
+  outline: 3px solid var(--lq-ring);
+  outline-offset: 2px;
+}
+
+/* ---------- 手机 / 平板适配 ---------- */
+/* 桌面与平板横屏：40px 保证一致性；触屏设备统一提升到 Apple HIG 的 44px */
+@media (min-width: 640px) {
+  .ui-scope :is(button, select, a[href][class*='rounded-'], label[class*='cursor-pointer']):not([class*='absolute']) {
+    min-height: 40px;
+  }
+}
+@media (pointer: coarse) {
+  .ui-scope :is(button, select, a[href][class*='rounded-'], label[class*='cursor-pointer']):not([class*='absolute']) {
+    min-height: 44px;
+  }
+  .ui-scope :is(
+    button[class*='p-1'],
+    button[class*='p-2'],
+    button[class*='w-6'],
+    button[class*='w-8'],
+    button[class*='w-9'],
+    button[class*='w-11'],
+    button[class*='w-12']
+  ):not([class*='w-full']):not([class*='flex-1']):not([class*='absolute']) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* 小屏：按钮组自动换行，避免一排按钮被挤出屏幕；降低模糊强度省电 */
+@supports selector(:has(> button)) {
+  @media (max-width: 639px) {
+    .ui-scope div.flex:has(> button + button):not([class*='flex-nowrap']) { flex-wrap: wrap; }
+    .ui-scope :is(button, select, a[href][class*='rounded-']) {
+      backdrop-filter: saturate(160%) blur(14px);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+    }
+  }
+}
+
+/* iPad 竖屏（抽屉式侧栏，内容区占满宽度）：按钮组内边距更宽松，防止误触 */
+@media (min-width: 768px) and (max-width: 1023px) and (pointer: coarse) {
+  .ui-scope :is(button, a[href][class*='rounded-'], select) { letter-spacing: 0.01em; }
+  .ui-scope div.flex:has(> button + button) { row-gap: 0.5rem; }
+}
+
+/* iOS 底部安全区：固定在底部的操作条不贴到 Home Indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media (max-width: 767px) {
+    .ui-scope [class*='fixed'][class*='bottom'] {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+/* 尊重「减少动态效果」 */
+@media (prefers-reduced-motion: reduce) {
+  .ui-scope :is(button, [role='button'], select, a[href], div[class*='cursor-pointer'], label[class*='cursor-pointer']) {
+    transition-duration: 0.01ms !important;
+  }
+  .ui-scope :is(button, a[href], div[class*='cursor-pointer']):hover,
+  .ui-scope :is(button, a[href], div[class*='cursor-pointer']):active {
+    transform: none !important;
+  }
 }

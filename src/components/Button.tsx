@@ -19,14 +19,15 @@ export function Button({
   disabled = false,
   type = 'button',
 }: ButtonProps) {
+  // 视觉统一交给 index.css 的液态玻璃控件体系，这里只声明语义变体
   const baseStyles = 'inline-flex items-center justify-center font-medium rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
-  
+
   const variants = {
-    primary: 'bg-apple-blue text-white hover:bg-apple-blueHover shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40',
-    secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    outline: 'border-2 border-apple-blue text-apple-blue hover:bg-blue-50',
-    ghost: 'text-gray-600 hover:bg-gray-100',
-    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/25 hover:shadow-red-500/40',
+    primary: 'lq-btn--primary',
+    secondary: 'text-secondary',
+    outline: 'lq-btn--outline',
+    ghost: 'lq-btn--ghost',
+    danger: 'lq-btn--danger',
   };
   
   const sizes = {

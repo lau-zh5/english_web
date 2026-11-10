@@ -559,24 +559,24 @@ export function WordListPage() {
         className="hidden"
       />
 
-      <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={handleBack}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="p-2 flex-shrink-0 rounded-lg hover:bg-gray-100 text-gray-500"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-3xl font-display font-bold text-primary-950">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-950 truncate">
               {currentChapter?.name || '单词列表'}
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm whitespace-nowrap">
               共 {stats.total} 个单词 · {stats.mastered} 个已掌握
             </p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Link to={`/vocabulary/test/${chapterId}`}>
             <Button variant="outline">
               <Shuffle size={18} className="mr-2" />
@@ -682,8 +682,8 @@ export function WordListPage() {
 
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="w-2/3 relative">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center">
+            <div className="w-full sm:w-1/2 lg:w-2/3 relative">
               <Search
                 size={18}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -698,7 +698,7 @@ export function WordListPage() {
             </div>
             <button
               onClick={toggleAllMeanings}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors whitespace-nowrap"
             >
               {showAllMeanings ? '隐藏全部释义' : '显示全部释义'}
             </button>
@@ -708,7 +708,7 @@ export function WordListPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-700 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
                   >
                     <Filter size={16} />
                     {dateFilter 

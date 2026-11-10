@@ -135,21 +135,21 @@ export function HomePage() {
   return (
     <div className="max-w-6xl mx-auto">
       <header className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <Sparkles size={24} className="text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-800 truncate">
                 Hi~, {currentUser?.username || '用户'}
               </h1>
-              <p className="text-gray-500 text-sm">今天也要继续努力学习哦 💪</p>
+              <p className="text-gray-500 text-xs sm:text-sm truncate">今天也要继续努力学习哦 💪</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-medium text-gray-700">{dateString}</p>
-            <p className="text-sm text-gray-500">{weekDay}</p>
+          <div className="text-right shrink-0 whitespace-nowrap">
+            <p className="text-sm sm:text-lg font-medium text-gray-700">{dateString}</p>
+            <p className="text-xs sm:text-sm text-gray-500">{weekDay}</p>
           </div>
         </div>
 

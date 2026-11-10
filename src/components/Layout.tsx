@@ -162,7 +162,8 @@ export function Layout({ children }: LayoutProps) {
         />
       )}
 
-      <main className="lg:ml-72 min-h-screen">
+      {/* ui-scope：液态玻璃控件只作用于内容区，侧栏与固定按钮不在此作用域 */}
+      <main className="ui-scope lg:ml-72 min-h-screen">
         <div className="px-4 pb-4 pt-14 lg:px-8 lg:pb-8 lg:pt-14">{children}</div>
       </main>
     </div>

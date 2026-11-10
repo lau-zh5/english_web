@@ -29,7 +29,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'normal' }: Mod
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className={`relative bg-white rounded-2xl shadow-2xl w-full mx-4 animate-slide-up max-h-[90vh] flex flex-col ${
+      <div className={`relative glass rounded-[28px] w-full mx-4 animate-slide-up max-h-[90dvh] flex flex-col ${
         size === 'large' ? 'max-w-2xl' : 'max-w-md'
       }`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">

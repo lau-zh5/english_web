@@ -107,7 +107,8 @@ export function LoginPage() {
         {resolved === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
-      <div className="relative w-full max-w-md">
+      {/* ui-scope 放在卡片容器上，使右上角的全站主题按钮不受控件体系影响 */}
+      <div className="ui-scope relative w-full max-w-md">
         <div className="glass rounded-3xl p-8 shadow-2xl">
           <div className="flex flex-col items-center mb-7">
             <Logo size="lg" />
@@ -122,9 +123,8 @@ export function LoginPage() {
                 type="button"
                 onClick={() => switchMode(m)}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  mode === m ? 'text-white shadow-md' : 'text-secondary hover:text-primary'
+                  mode === m ? 'lq-btn--primary text-white shadow-md' : 'text-secondary hover:text-primary'
                 }`}
-                style={mode === m ? { background: 'var(--accent)' } : undefined}
               >
                 {m === 'login' ? '登录' : '注册账号'}
               </button>

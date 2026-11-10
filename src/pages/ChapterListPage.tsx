@@ -103,24 +103,24 @@ export function ChapterListPage() {
         className="hidden"
       />
 
-      <header className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={handleBack}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="p-2 flex-shrink-0 rounded-lg hover:bg-gray-100 text-gray-500"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-3xl font-display font-bold text-primary-950">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary-950 truncate">
               {currentWordbook?.name || '章节管理'}
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm whitespace-nowrap">
               共 {chapters.length} 个章节
             </p>
           </div>
         </div>
-        <Button onClick={() => handleOpenModal()}>
+        <Button onClick={() => handleOpenModal()} className="whitespace-nowrap shrink-0 self-start sm:self-auto">
           <Plus size={18} className="mr-2" />
           创建章节
         </Button>
@@ -140,9 +140,9 @@ export function ChapterListPage() {
           {chapters.map((chapter, index) => (
             <Card key={chapter.id} hover className="group">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div 
-                    className="flex items-center gap-4 flex-1 cursor-pointer"
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div
+                    className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
                     onClick={() => handleEnter(chapter.id)}
                   >
                     <div className="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center text-accent-600 font-semibold">
@@ -161,10 +161,10 @@ export function ChapterListPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleUploadClick(chapter.id); }}
-                      className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-accent-50 text-gray-600 hover:text-accent-600 flex items-center gap-1.5 text-sm transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-accent-50 text-gray-600 hover:text-accent-600 flex items-center gap-1.5 text-sm transition-colors whitespace-nowrap"
                     >
                       <Upload size={14} />
                       上传音频
