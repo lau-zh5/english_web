@@ -40,34 +40,14 @@ jobs:
       - name: 构建前端
         run: npm run build
 
-      - name: 安装 CloudBase CLI
-        run: npm install -g @cloudbase/cli
-
-      - name: 诊断凭证注入情况
-        # 只打印长度，不打印内容，用于区分「没配 Secret」与「Secret 值有误」
+      - name: 部署到静态托管根目录
+        # 直接调用 @cloudbase/manager-node 的 hosting.uploadFiles，
+        # 与 tcb hosting deploy 同一套底层实现，但不经过 CLI 登录流程
         env:
           TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
           TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
           TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
-        run: |
-          echo "SecretId 长度: ${#TCB_SECRET_ID}"
-          echo "SecretKey 长度: ${#TCB_SECRET_KEY}"
-          echo "EnvId: $TCB_ENV_ID"
-
-      - name: 登录云开发
-        env:
-          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
-          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
-        # 用 env 传参，避免密钥直接拼在命令行里；非交互凭证登录，不会弹浏览器
-        # --intl false：强制使用中国站。CI 跑在境外，不加会被判定为国际站而登录失败
-        run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY" --intl false
-
-      - name: 验证登录态
-        run: tcb env list
-
-      - name: 部署到静态托管根目录
-        # Linux 环境不存在 Git Bash 把 / 转成 PortableGit 路径的问题
-        run: tcb hosting deploy ./dist / -e "${{ secrets.TCB_ENV_ID }}"
+        run: node scripts/cloudbase-deploy.cjs
 
       - name: 复验线上
         # 仅作信息输出，不让非 200 影响部署结果判定
