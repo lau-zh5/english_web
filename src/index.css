@@ -1194,6 +1194,66 @@
 .lq-tabbar-item.is-active { color: var(--accent); font-weight: 600; }
 .lq-tabbar-item:active { transform: scale(0.94); }
 
+/* 底部栏第二行：头像/我的 + 退出账号，等价于桌面侧栏底部的两项功能 */
+.lq-tabbar-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 5px 14px 6px;
+  border-top: 1px solid var(--lq-stroke, rgba(120, 120, 128, 0.16));
+}
+.lq-tabbar-account-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 0;
+  border-radius: 10px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.lq-tabbar-account-user.is-active { color: var(--accent); font-weight: 600; }
+.lq-tabbar-account-user:active { opacity: 0.65; }
+.lq-tabbar-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #5aa9ff, #0a63d6);
+  color: #fff;
+}
+.lq-tabbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.lq-tabbar-account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lq-tabbar-account-chevron { flex: 0 0 auto; opacity: 0.55; }
+.lq-tabbar-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--danger, #d70015);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lq-tabbar-logout:active { background: rgba(215, 0, 21, 0.1); transform: scale(0.96); }
+
 /* 平板版紧凑侧栏（88px 图标栏） */
 .lq-side-compact {
   display: flex;
