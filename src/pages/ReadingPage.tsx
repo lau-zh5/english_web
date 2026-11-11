@@ -179,17 +179,18 @@ export function ReadingPage() {
             <ChevronDown size={18} className={`ml-1 transition-transform ${showImportMenu ? 'rotate-180' : ''}`} />
           </Button>
           {showImportMenu && (
-            <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white shadow-xl border border-gray-100 py-1 z-50">
+            <div className="lq-menu lq-menu--col absolute right-0 top-full mt-2">
               <button
                 onClick={() => {
                   setIsArticleModalOpen(true);
                   setShowImportMenu(false);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-blue-50 transition-colors"
+                className="lq-menu-item"
               >
-                <Upload size={18} />
+                <Upload size={15} />
                 导入文章
               </button>
+              <div className="lq-menu-divider" />
               <button
                 onClick={() => {
                   if (articles.length === 0) {
@@ -200,9 +201,9 @@ export function ReadingPage() {
                   setIsQuestionModalOpen(true);
                   setShowImportMenu(false);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-blue-50 transition-colors"
+                className="lq-menu-item"
               >
-                <FileText size={18} />
+                <FileText size={15} />
                 导入题目
               </button>
             </div>

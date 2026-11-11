@@ -32,15 +32,17 @@ export function Modal({ isOpen, onClose, title, children, size = 'normal' }: Mod
       <div className={`relative glass rounded-[28px] w-full mx-4 animate-slide-up max-h-[90dvh] flex flex-col ${
         size === 'large' ? 'max-w-2xl' : 'max-w-md'
       }`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-lg font-display font-semibold text-primary-950">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-lg font-display font-semibold text-primary">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+            className="lq-close"
+            aria-label="关闭"
+            title="关闭"
           >
-            <X size={20} className="text-gray-500" />
+            <X size={18} />
           </button>
         </div>
         <div className="p-4 overflow-y-auto flex-1">{children}</div>

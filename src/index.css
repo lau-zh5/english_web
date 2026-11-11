@@ -336,6 +336,11 @@
 .dark .text-gray-500 { color: var(--text-3); }
 .dark .text-gray-400 { color: #8e8e93; }
 
+/* 历史页面用 primary-950 这类深蓝做标题，深底上几乎不可见 */
+.dark .text-primary-950,
+.dark .text-primary-900,
+.dark .text-primary-800 { color: var(--text-1); }
+
 .dark .text-blue-600 { color: #7dd3fc; }
 .dark .text-blue-500 { color: #7dd3fc; }
 .dark .text-green-500 { color: #34d399; }
@@ -609,7 +614,8 @@
 }
 
 /* 文本输入类控件与按钮共用玻璃语言；解决历史硬编码 bg-white 在暗黑下刺眼的问题 */
-.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='submit']) {
+.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='submit']),
+.ui-scope textarea {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   color: var(--text-1);
@@ -619,14 +625,43 @@
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
   outline: none;
 }
-.ui-scope input::placeholder { color: var(--text-3); opacity: 1; }
-.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):focus {
+.ui-scope textarea:not(.font-mono) { font-family: inherit; }
+.ui-scope input::placeholder,
+.ui-scope textarea::placeholder { color: var(--text-3); opacity: 1; }
+.ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
+.ui-scope textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.dark .ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+.dark .ui-scope input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.dark .ui-scope textarea {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
 }
+
+/* 原生文件选择控件：把系统默认的方块按钮与「未选择文件」文字统一成玻璃风格 */
+.ui-scope input[type='file'] {
+  width: 100%;
+  color: var(--text-3);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ui-scope input[type='file']::file-selector-button {
+  height: 36px;
+  margin-right: 12px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid var(--lq-stroke);
+  background: var(--lq-fill);
+  box-shadow: var(--lq-shadow);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.ui-scope input[type='file']::file-selector-button:hover { background: var(--lq-fill-hover); }
+.ui-scope input[type='file']::file-selector-button:active { transform: scale(0.97); }
 
 /* 纯文字链接：不改外观，只补按压与键盘焦点 */
 .ui-scope a[href]:not([class*='rounded-']) {
@@ -899,3 +934,180 @@
   transform: translateZ(0);
   will-change: transform;
 }
+
+/* PDF 预览页工具栏：下载链接用与全局一致的玻璃胶囊，取代原先硬编码的纯色块 */
+.ui-scope a.lq-toolbar-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: var(--lq-fill);
+  border: 1px solid var(--lq-stroke);
+  box-shadow: var(--lq-shadow);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.ui-scope a.lq-toolbar-link::after { content: ''; position: absolute; inset: -4px 0; }
+.ui-scope a.lq-toolbar-link:hover { background: var(--lq-fill-hover); }
+.ui-scope a.lq-toolbar-link:active { transform: scale(0.97); }
+
+/* ============================================================
+   第二轮精细修正（2026-11-10 晚）：
+   1) 所有「纯图标按钮」统一 flex 居中，消除 dx=-3~-7px 的偏心
+   2) 所有「× 关闭 / 清除」按钮统一为 lq-close 紧凑玻璃方钮
+   3) 所有含 radio/checkbox 的 label 退出 44px 玻璃按钮规则
+   4) 所有下拉菜单统一为 lq-menu 一整块浮层
+   ============================================================ */
+
+/* 纯图标按钮：唯一子元素是 svg 时，强制水平垂直居中。
+   :only-child 只统计元素子节点，因此带文字的 Button 不受影响；
+   它本来就是 inline-flex，重复声明也无害。 */
+.ui-scope button:has(> svg:only-child):not([class*='lq-menu-item']) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 兜底：不支持 :has() 的旧浏览器，用「只有 padding 没有文字间距」的小按钮近似命中 */
+@supports not selector(button:has(> svg)) {
+  .ui-scope button:is([class*='p-1'], [class*='p-2'], [class*='w-6'], [class*='w-8']):not([class*='w-full']):not([class*='flex-1']) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* 统一的 × 关闭 / 清除按钮：36px 玻璃方钮，图标严格居中，热区扩到 44px */
+.ui-scope button.lq-close {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  background: var(--lq-fill-soft) !important;
+  border: 1px solid var(--lq-stroke-2) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--text-3) !important;
+  transform: none !important;
+  flex: 0 0 auto;
+}
+.ui-scope button.lq-close::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+.ui-scope button.lq-close:hover {
+  background: var(--lq-fill-hover) !important;
+  color: var(--text-1) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.ui-scope button.lq-close:active { transform: scale(0.94) !important; box-shadow: none !important; }
+/* 输入框内嵌的清除按钮更轻，不要方钮底 */
+.ui-scope button.lq-close--inline {
+  width: 30px;
+  height: 30px;
+  min-width: 30px !important;
+  min-height: 30px !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* radio / checkbox 标签：退出 44px 玻璃按钮规则。
+   用 :not(.lq-choice) 把「已套用胶囊样式」的标签排除，避免此处 !important 覆盖胶囊。 */
+.ui-scope label:has(> input[type='radio']):not(.lq-choice),
+.ui-scope label:has(> input[type='checkbox']):not(.lq-choice) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+.ui-scope .lq-choice {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px !important;
+  border-radius: 999px !important;
+  background: var(--lq-fill-soft) !important;
+  border: 1px solid var(--lq-stroke-2) !important;
+  box-shadow: none !important;
+  color: var(--text-2) !important;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.ui-scope .lq-choice input[type='radio'],
+.ui-scope .lq-choice input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.ui-scope .lq-choice:has(input:checked) {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+.ui-scope .lq-choice:hover { background: var(--lq-fill-hover) !important; transform: none !important; box-shadow: none !important; }
+.ui-scope .lq-choice:active { transform: none !important; box-shadow: none !important; }
+
+/* 卡片角落的图标按钮：轻盈透明，hover 才浮出玻璃，避免一整块白方块 */
+.ui-scope button.lq-icon-btn--subtle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none !important;
+}
+/* 视觉 36px，点击热区补到 44px（Apple HIG） */
+.ui-scope button.lq-icon-btn--subtle::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+.ui-scope button.lq-icon-btn--subtle:hover {
+  background: var(--lq-fill-hover) !important;
+  border-color: var(--lq-stroke-2) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.ui-scope button.lq-icon-btn--subtle:active { transform: scale(0.94) !important; box-shadow: none !important; }
+
+/* 下拉菜单：纵向排列时菜单项左对齐，图标 + 文字更自然；彩色语义项可保留配色 */
+.ui-scope .lq-menu--col .lq-menu-item { justify-content: flex-start; }
+.ui-scope .lq-menu .lq-menu-item--accent { color: var(--accent) !important; }
+.ui-scope .lq-menu .lq-menu-item--violet { color: #8944ab !important; }
+.dark .ui-scope .lq-menu .lq-menu-item--violet { color: #d8b4fe !important; }

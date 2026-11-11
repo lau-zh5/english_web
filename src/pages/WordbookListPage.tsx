@@ -130,37 +130,39 @@ export function WordbookListPage() {
         {wordbooks.map((wordbook) => (
           <Card key={wordbook.id}>
             <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div 
-                  className="flex-1 cursor-pointer" 
+              <div className="flex justify-between items-center gap-2">
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
                   onClick={() => navigate(`/vocabulary/wordbook/${wordbook.id}`)}
                 >
-                  <h3 className="font-semibold text-lg">{wordbook.name}</h3>
+                  <h3 className="font-semibold text-lg truncate">{wordbook.name}</h3>
                   <p className="text-gray-500 text-sm mt-1">
                     {wordbook.chapter_count} 章节 · {wordbook.word_count} 单词
                   </p>
                 </div>
-                <div className="flex gap-1 ml-2">
+                <div className="flex items-center gap-1 shrink-0">
                   {wordbook.ebook_path && (
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/vocabulary/ebook/${wordbook.id}`); }}
-                      className="p-1.5 hover:bg-gray-100 rounded text-blue-600"
+                      className="lq-icon-btn lq-icon-btn--subtle"
                       title="预览 PDF"
                     >
-                      <Eye size={18} />
+                      <Eye size={18} className="text-blue-600" />
                     </button>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEdit(wordbook); }}
-                    className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
+                    className="lq-icon-btn lq-icon-btn--subtle"
+                    title="编辑"
                   >
                     <Edit2 size={18} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(wordbook.id); }}
-                    className="p-1.5 hover:bg-gray-100 rounded text-red-600"
+                    className="lq-icon-btn lq-icon-btn--subtle"
+                    title="删除"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} className="text-red-600" />
                   </button>
                 </div>
               </div>

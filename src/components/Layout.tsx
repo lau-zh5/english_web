@@ -1,8 +1,7 @@
 import { ReactNode } from 'react';
 import { apiFetch, mediaUrl, clearSession } from '../lib/api';
-import { useTheme } from '../lib/theme';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Headphones, FileText, Home, Menu, X, LogOut, User, Moon, Sun, Database } from 'lucide-react';
+import { BookOpen, Headphones, FileText, Home, Menu, X, LogOut, User, Database } from 'lucide-react';
 import { Logo } from './Logo';
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
@@ -27,7 +26,6 @@ export function Layout({ children }: LayoutProps) {
     author: "Steve Jobs",
     source: undefined
   });
-  const { resolved, toggleTheme } = useTheme();
   const { currentUser, loadCurrentUser } = useStore();
 
   useEffect(() => {
@@ -64,16 +62,7 @@ export function Layout({ children }: LayoutProps) {
         {sidebarOpen ? <X size={18} className="text-secondary" /> : <Menu size={18} className="text-secondary" />}
       </button>
 
-      {/* 全站唯一的主题切换入口：固定在视口右上角。
-          内容区统一预留 pt-14（56px），按钮仅占 10~46px，不会压住首页日期等顶部内容。 */}
-      <button
-        onClick={toggleTheme}
-        className="lq-theme-toggle fixed top-2.5 right-3 z-[60] flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
-        title={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
-        aria-label="切换主题"
-      >
-        {resolved === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
+      {/* 主题按钮由应用根部的 <ThemeToggle /> 统一提供，所有页面共用一份 */}
 
       <aside
         className={`fixed top-0 left-0 z-40 h-full w-72 glass transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${

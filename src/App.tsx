@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { ThemeToggle } from './components/ThemeToggle';
 import { HomePage } from './pages/HomePage';
 import { WordbookListPage } from './pages/WordbookListPage';
 import { ChapterListPage } from './pages/ChapterListPage';
@@ -26,6 +27,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <BrowserRouter>
+      {/* 全站唯一的主题按钮：置于路由之外，登录页与所有内页共用，始终固定顶部 */}
+      <ThemeToggle />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

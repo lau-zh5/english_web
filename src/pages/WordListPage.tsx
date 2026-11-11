@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Filter, Shuffle, ArrowLeft, Upload, Music, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Shuffle, ArrowLeft, Upload, Music, Pencil, Trash2, BookOpen, X } from 'lucide-react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
@@ -596,23 +596,26 @@ export function WordListPage() {
               更多
             </Button>
             {isMoreMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+              <div className="lq-menu lq-menu--col absolute right-0 top-full mt-2">
                 <button
                   onClick={() => {
                     fetchGroupedWords('polysemous');
                     setIsMoreMenuOpen(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-blue-600"
+                  className="lq-menu-item lq-menu-item--accent"
                 >
+                  <BookOpen size={14} />
                   查看多义词
                 </button>
+                <div className="lq-menu-divider" />
                 <button
                   onClick={() => {
                     fetchGroupedWords('similar');
                     setIsMoreMenuOpen(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-purple-600"
+                  className="lq-menu-item lq-menu-item--violet"
                 >
+                  <Shuffle size={14} />
                   查看相似词
                 </button>
               </div>
@@ -718,9 +721,11 @@ export function WordListPage() {
                   {dateFilter && (
                     <button
                       onClick={() => setDateFilter(null)}
-                      className="px-2 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-sm text-blue-500 hover:text-blue-700 transition-colors"
+                      className="lq-close"
+                      title="清除日期筛选"
+                      aria-label="清除日期筛选"
                     >
-                      ×
+                      <X size={16} />
                     </button>
                   )}
                 </div>
@@ -1131,8 +1136,8 @@ export function WordListPage() {
           </div>
           {(isPolysemous || isSimilar) ? (
             <div>
-              <div className="flex gap-6 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex flex-wrap gap-2 pt-2">
+                <label className="lq-choice">
                   <input
                     type="checkbox"
                     checked={isPolysemous}
@@ -1151,7 +1156,7 @@ export function WordListPage() {
                   />
                   <span className="text-sm text-gray-700">一词多义</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="lq-choice">
                   <input
                     type="checkbox"
                     checked={isSimilar}
@@ -1176,10 +1181,11 @@ export function WordListPage() {
                   <div key={index} className="p-4 bg-gray-50 rounded-lg relative">
                     <button
                       onClick={() => removeGroupWord(index)}
-                      className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 hover:bg-red-100 text-gray-500 hover:text-red-500 transition-colors"
+                      className="lq-close absolute top-2 right-2"
                       title="删除此单词"
+                      aria-label="删除此单词"
                     >
-                      ×
+                      <X size={16} />
                     </button>
                     <div className="text-sm font-medium text-gray-700 mb-3">
                       单词 {index + 1}
@@ -1324,7 +1330,7 @@ export function WordListPage() {
           ) : (
             <div>
               <div className="flex gap-6 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="lq-choice">
                   <input
                     type="radio"
                     name="groupType"
@@ -1339,7 +1345,7 @@ export function WordListPage() {
                   />
                   <span className="text-sm text-gray-700">一词多义</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="lq-choice">
                   <input
                     type="radio"
                     name="groupType"

@@ -170,9 +170,11 @@ export function HomePage() {
                 {searchQuery && (
                   <button
                     onClick={handleClearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="lq-close lq-close--inline absolute right-2 top-0 bottom-0 my-auto"
+                    title="清除搜索"
+                    aria-label="清除搜索"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 )}
               </div>

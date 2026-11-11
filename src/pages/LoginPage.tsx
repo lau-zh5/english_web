@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Moon, Sun, Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { apiJson, setSession, type Session } from '../lib/api';
-import { useTheme } from '../lib/theme';
 
 type Mode = 'login' | 'register';
 
@@ -16,7 +15,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { resolved, toggleTheme } = useTheme();
 
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
@@ -98,14 +96,7 @@ export function LoginPage() {
         style={{ background: 'var(--orb-2)' }}
       />
 
-      <button
-        onClick={toggleTheme}
-        className="lq-theme-toggle fixed top-2.5 right-3 z-[60] flex h-9 w-9 items-center justify-center rounded-xl glass text-secondary shadow-md hover:text-primary hover:shadow-lg transition-all"
-        title={resolved === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
-        aria-label="切换主题"
-      >
-        {resolved === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
+      {/* 主题按钮由应用根部的 <ThemeToggle /> 统一提供，此处不再重复 */}
 
       {/* ui-scope 放在卡片容器上，使右上角的全站主题按钮不受控件体系影响 */}
       <div className="ui-scope relative w-full max-w-md">
