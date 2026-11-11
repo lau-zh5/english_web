@@ -43,11 +43,24 @@ jobs:
       - name: 安装 CloudBase CLI
         run: npm install -g @cloudbase/cli
 
-      - name: 登录云开发
-        run: tcb login --apiKeyId "${{ secrets.TCB_SECRET_ID }}" --apiKey "${{ secrets.TCB_SECRET_KEY }}"
+      - name: 诊断凭证注入情况
+        # 只打印长度，不打印内容，用于区分「没配 Secret」与「Secret 值有误」
+        env:
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: |
+          echo "SecretId 长度: ${#TCB_SECRET_ID}"
+          echo "SecretKey 长度: ${#TCB_SECRET_KEY}"
+          echo "EnvId: $TCB_ENV_ID"
 
       - name: 部署到静态托管根目录
+        # 用腾讯云 SDK 标准环境变量传凭证，跳过 tcb login 子命令
         # Linux 环境不存在 Git Bash 把 / 转成 PortableGit 路径的问题
+        env:
+          TENCENTCLOUD_SECRETID: ${{ secrets.TCB_SECRET_ID }}
+          TENCENTCLOUD_SECRETKEY: ${{ secrets.TCB_SECRET_KEY }}
+          TENCENTCLOUD_REGION: ap-shanghai
         run: tcb hosting deploy ./dist / -e "${{ secrets.TCB_ENV_ID }}"
 
       - name: 复验线上
