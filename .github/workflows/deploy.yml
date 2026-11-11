@@ -7,8 +7,10 @@ name: 部署前端到 CloudBase
 #   实测应用创建与“构建完成”仅差 1 秒，BuildConfig 为空，push 后不产生新版本，
 #   实际执行的是「自定义部署」（本地上传）。故改用 Actions 自行构建 + CLI 上传。
 #
-# 本 workflow 只做一件事：构建前端并覆盖静态托管根目录。
-#   不重建云函数 english-api、不改 /api 网关路由——这两者改动时用本机 `tcb deploy --yes`。
+# 本 workflow 做两件事：
+#   1. 构建前端并覆盖静态托管根目录；
+#   2. 当 cloudbase/functions/** 有改动时，同步云函数 english-api 的代码。
+#   云函数的环境变量（AUTH_SECRET）与 /api 网关路由不在此改动，保持控制台配置。
 
 on:
   push:
@@ -27,6 +29,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -48,6 +52,26 @@ jobs:
           TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
           TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
         run: node scripts/cloudbase-deploy.cjs
+
+      - name: 判断云函数是否有改动
+        id: fnchanged
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1 && \
+             ! git diff --name-only HEAD^ HEAD | grep -q '^cloudbase/functions/'; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "云函数未改动，跳过代码同步"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "检测到云函数改动（或无法比对历史），执行代码同步"
+          fi
+
+      - name: 同步云函数 english-api 代码
+        if: steps.fnchanged.outputs.changed == 'true'
+        env:
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+        run: node scripts/cloudbase-function-deploy.cjs
 
       - name: 复验线上
         # 仅作信息输出，不让非 200 影响部署结果判定

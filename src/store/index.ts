@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { Word, Article, StudyRecord, Note, AudioItem, Wordbook, Chapter } from '../types';
 
 import { apiFetch } from '../lib/api';
+import { idKey, sameId } from '../utils/helpers';
 
 interface User {
-  id: number;
+  id: number | string;
   username: string;
   email?: string;
   avatar?: string;
@@ -24,26 +25,29 @@ interface AppState {
   currentWordbook: Wordbook | null;
   currentChapter: Chapter | null;
   currentUser: User | null;
+  /** 历史遗留：没有记录章节归属的单词（修复前的版本写入的） */
+  orphanWords: Word[];
+  adoptOrphanWords: (chapterId: number | string, wordbookId?: number | string) => Promise<number>;
   
   loadWordbooks: () => Promise<void>;
   addWordbook: (name: string, description?: string) => Promise<Wordbook>;
-  updateWordbook: (id: number, updates: Partial<Wordbook>) => Promise<void>;
-  deleteWordbook: (id: number) => Promise<void>;
+  updateWordbook: (id: number | string, updates: Partial<Wordbook>) => Promise<void>;
+  deleteWordbook: (id: number | string) => Promise<void>;
   
-  loadChapters: (wordbookId: number) => Promise<void>;
+  loadChapters: (wordbookId: number | string) => Promise<void>;
   loadAllChapters: () => Promise<void>;
-  addChapter: (wordbookId: number, name: string, chapterOrder?: number) => Promise<Chapter>;
-  updateChapter: (id: number, updates: Partial<Chapter>) => Promise<void>;
-  deleteChapter: (id: number) => Promise<void>;
-  uploadChapterAudio: (chapterId: number, file: File) => Promise<string>;
+  addChapter: (wordbookId: number | string, name: string, chapterOrder?: number) => Promise<Chapter>;
+  updateChapter: (id: number | string, updates: Partial<Chapter>) => Promise<void>;
+  deleteChapter: (id: number | string) => Promise<void>;
+  uploadChapterAudio: (chapterId: number | string, file: File) => Promise<string>;
   
-  loadWords: (chapterId?: number, wordbookId?: number) => Promise<void>;
+  loadWords: (chapterId?: number | string, wordbookId?: number | string) => Promise<void>;
   loadReadingWords: () => Promise<void>;
   addWord: (word: Omit<Word, 'id' | 'createdAt' | 'lastReviewedAt' | 'reviewCount'>) => Promise<Word>;
   updateWord: (id: string | number, updates: Partial<Word>) => Promise<void>;
   deleteWord: (id: string | number) => Promise<void>;
-  batchAddWords: (words: Array<{word: string; phonetic?: string; meaning: string; example?: string}>, wordbookId?: number, chapterId?: number) => Promise<void>;
-  uploadWordAudio: (wordId: number, file: File) => Promise<string>;
+  batchAddWords: (words: Array<{word: string; phonetic?: string; meaning: string; example?: string}>, wordbookId?: number | string, chapterId?: number | string) => Promise<void>;
+  uploadWordAudio: (wordId: number | string, file: File) => Promise<string>;
   
   loadArticles: () => Promise<void>;
   addArticle: (article: Omit<Article, 'id' | 'createdAt' | 'wordCount'>) => Promise<void>;
@@ -78,6 +82,7 @@ export const useStore = create<AppState>((set) => ({
   currentWordbook: null,
   currentChapter: null,
   currentUser: null,
+  orphanWords: [],
   
   loadWordbooks: async () => {
     try {
@@ -114,7 +119,7 @@ export const useStore = create<AppState>((set) => ({
         body: JSON.stringify(updates),
       });
       set(state => ({
-        wordbooks: state.wordbooks.map(w => w.id === id ? { ...w, ...updates } : w)
+        wordbooks: state.wordbooks.map(w => sameId(w.id, id) ? { ...w, ...updates } : w)
       }));
     } catch (error) {
       console.error('Failed to update wordbook:', error);
@@ -124,7 +129,7 @@ export const useStore = create<AppState>((set) => ({
   deleteWordbook: async (id) => {
     try {
       await apiFetch(`/wordbooks/${id}`, { method: 'DELETE' });
-      set(state => ({ wordbooks: state.wordbooks.filter(w => w.id !== id) }));
+      set(state => ({ wordbooks: state.wordbooks.filter(w => !sameId(w.id, id)) }));
     } catch (error) {
       console.error('Failed to delete wordbook:', error);
     }
@@ -132,7 +137,7 @@ export const useStore = create<AppState>((set) => ({
   
   loadChapters: async (wordbookId) => {
     try {
-      const response = await apiFetch(`/chapters/wordbook/${wordbookId}`);
+      const response = await apiFetch(`/chapters/wordbook/${encodeURIComponent(idKey(wordbookId))}`);
       const data = await response.json();
       set({ chapters: data });
     } catch (error) {
@@ -176,7 +181,7 @@ export const useStore = create<AppState>((set) => ({
         body: JSON.stringify(updates),
       });
       set(state => ({
-        chapters: state.chapters.map(c => c.id === id ? { ...c, ...updates } : c)
+        chapters: state.chapters.map(c => sameId(c.id, id) ? { ...c, ...updates } : c)
       }));
     } catch (error) {
       console.error('Failed to update chapter:', error);
@@ -186,7 +191,7 @@ export const useStore = create<AppState>((set) => ({
   deleteChapter: async (id) => {
     try {
       await apiFetch(`/chapters/${id}`, { method: 'DELETE' });
-      set(state => ({ chapters: state.chapters.filter(c => c.id !== id) }));
+      set(state => ({ chapters: state.chapters.filter(c => !sameId(c.id, id)) }));
     } catch (error) {
       console.error('Failed to delete chapter:', error);
     }
@@ -205,7 +210,7 @@ export const useStore = create<AppState>((set) => ({
       const data = await response.json();
       set(state => ({
         chapters: state.chapters.map(c => 
-          c.id === chapterId ? { ...c, audio_path: data.file_path } : c
+          sameId(c.id, chapterId) ? { ...c, audio_path: data.file_path } : c
         )
       }));
       return data.file_path;
@@ -217,23 +222,61 @@ export const useStore = create<AppState>((set) => ({
   
   loadWords: async (chapterId, wordbookId) => {
     try {
-      let url = `/words?`;
-      if (chapterId) url += `chapter_id=${chapterId}`;
-      if (wordbookId) url += `wordbook_id=${wordbookId}`;
-      
+      const params: string[] = [];
+      if (chapterId) params.push(`chapter_id=${encodeURIComponent(idKey(chapterId))}`);
+      if (wordbookId) params.push(`wordbook_id=${encodeURIComponent(idKey(wordbookId))}`);
+      const url = params.length ? `/words?${params.join('&')}` : '/words';
+
       const response = await apiFetch(url);
       const data = await response.json();
-      const transformedData = data.map((word: any) => ({
+      const all: any[] = Array.isArray(data) ? data : [];
+
+      // 云端旧版本会忽略查询参数、返回该账号的全部单词；
+      // 这里按归属再过滤一次，确保不同单词书 / 章节之间互不可见。
+      const scoped = all.filter((word) =>
+        (!chapterId || idKey(word.chapter_id) === idKey(chapterId)) &&
+        (!wordbookId || idKey(word.wordbook_id) === idKey(wordbookId))
+      );
+      const orphanWords = chapterId
+        ? all.filter((word) =>
+            idKey(word.chapter_id) === '' &&
+            (!wordbookId || idKey(word.wordbook_id) === '' || idKey(word.wordbook_id) === idKey(wordbookId))
+          )
+        : [];
+
+      const transformedData = scoped.map((word: any) => ({
         ...word,
         lastReviewedAt: word.last_reviewed || word.last_reviewed_at || word.lastReviewedAt,
         reviewCount: word.review_count || word.reviewCount,
         createdAt: word.created_at || word.createdAt
       }));
-      set({ words: transformedData });
+      set({ words: transformedData, orphanWords });
     } catch (error) {
       console.error('Failed to load words:', error);
-      set({ words: [] });
+      set({ words: [], orphanWords: [] });
     }
+  },
+
+  adoptOrphanWords: async (chapterId, wordbookId) => {
+    const targets = useStore.getState().orphanWords;
+    let done = 0;
+    for (const word of targets) {
+      try {
+        await apiFetch(`/words/${encodeURIComponent(idKey(word.id))}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chapter_id: idKey(chapterId),
+            ...(wordbookId ? { wordbook_id: idKey(wordbookId) } : {}),
+          }),
+        });
+        done += 1;
+      } catch (error) {
+        console.error('Failed to adopt orphan word:', error);
+      }
+    }
+    set({ orphanWords: [] });
+    return done;
   },
   
   loadReadingWords: async () => {
@@ -277,7 +320,7 @@ export const useStore = create<AppState>((set) => ({
         body: JSON.stringify(updates),
       });
       set(state => ({ 
-        words: state.words.map(w => w.id === id ? { ...w, ...updates } : w)
+        words: state.words.map(w => sameId(w.id, id) ? { ...w, ...updates } : w)
       }));
     } catch (error) {
       console.error('Failed to update word:', error);
@@ -287,7 +330,7 @@ export const useStore = create<AppState>((set) => ({
   deleteWord: async (id) => {
     try {
       await apiFetch(`/words/${id}`, { method: 'DELETE' });
-      set(state => ({ words: state.words.filter(w => w.id !== id) }));
+      set(state => ({ words: state.words.filter(w => !sameId(w.id, id)) }));
     } catch (error) {
       console.error('Failed to delete word:', error);
     }
@@ -325,7 +368,7 @@ export const useStore = create<AppState>((set) => ({
       const data = await response.json();
       set(state => ({
         words: state.words.map(w => 
-          w.id === wordId ? { ...w, audio_path: data.file_path } : w
+          sameId(w.id, wordId) ? { ...w, audio_path: data.file_path } : w
         )
       }));
       return data.file_path;

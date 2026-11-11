@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/Card';
 import { ProgressBar } from '../components/ProgressBar';
 import { Button } from '../components/Button';
 import { useStore } from '../store';
-import { isSameDay } from '../utils/helpers';
+import { isSameDay, sameId } from '../utils/helpers';
 import { filterMeaning } from '../utils/meaningFilter';
 export function HomePage() {
   const navigate = useNavigate();
@@ -73,25 +73,25 @@ export function HomePage() {
   }, [words, searchQuery]);
 
   // 获取单词书名称（优先使用后端返回的 wordbook_name，其次通过章节查找，最后通过 wordbook_id 查找）
-  const getWordbookName = (wordbookId?: number | null, wordbookName?: string, chapterId?: number | null) => {
+  const getWordbookName = (wordbookId?: number | string | null, wordbookName?: string, chapterId?: number | string | null) => {
     if (wordbookName) return wordbookName;
     if (chapterId) {
-      const chapter = chapters.find(c => c.id === chapterId);
+      const chapter = chapters.find(c => sameId(c.id, chapterId));
       if (chapter?.wordbook_id) {
-        const wordbook = wordbooks.find(w => w.id === chapter.wordbook_id);
+        const wordbook = wordbooks.find(w => sameId(w.id, chapter.wordbook_id));
         if (wordbook) return wordbook.name;
       }
     }
     if (!wordbookId) return '无单词书';
-    const wordbook = wordbooks.find(w => w.id === wordbookId);
+    const wordbook = wordbooks.find(w => sameId(w.id, wordbookId));
     return wordbook?.name || '无单词书';
   };
 
   // 获取章节名称（优先使用后端返回的 chapter_name，避免数据加载时序问题）
-  const getChapterName = (chapterId?: number | null, chapterName?: string) => {
+  const getChapterName = (chapterId?: number | string | null, chapterName?: string) => {
     if (chapterName) return chapterName;
     if (!chapterId) return '无章节';
-    const chapter = chapters.find(c => c.id === chapterId);
+    const chapter = chapters.find(c => sameId(c.id, chapterId));
     return chapter?.name || '无章节';
   };
 

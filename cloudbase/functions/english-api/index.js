@@ -189,6 +189,67 @@ function sanitize(patch) {
   return out;
 }
 
+/* ------------------------- 归属过滤（数据隔离） -------------------------
+ * 外键字段有历史遗留的两种写法：早期 MySQL 导入的数据是数字 ID，
+ * 云端新建的 wordbook / chapter 用的是字符串 _id。文档数据库等值查询
+ * 严格区分类型，所以两种都查一遍再按 _id 去重合并，避免漏掉旧数据。
+ */
+function idCandidates(raw) {
+  const s = String(raw);
+  if (/^-?\d+$/.test(s) && String(Number(s)) === s && Number.isSafeInteger(Number(s))) {
+    return [s, Number(s)];
+  }
+  return [s];
+}
+
+async function queryByFilters(col, base, filters, limit) {
+  let combos = [{}];
+  for (const [field, raw] of filters) {
+    const next = [];
+    for (const combo of combos) {
+      for (const value of idCandidates(raw)) next.push({ ...combo, [field]: value });
+    }
+    combos = next;
+  }
+
+  const seen = new Set();
+  const out = [];
+  for (const combo of combos) {
+    const r = await col.where({ ...base, ...combo }).limit(limit).get();
+    for (const doc of r.data || []) {
+      const key = doc._id != null ? String(doc._id) : JSON.stringify(doc);
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(doc);
+      }
+    }
+  }
+  return out.slice(0, limit);
+}
+
+// 只有这些字段允许参与列表查询，避免把 limit 等控制参数当成数据条件
+const LIST_FILTERS = {
+  chapter_id: 'chapter_id', chapterId: 'chapter_id',
+  wordbook_id: 'wordbook_id', wordbookId: 'wordbook_id',
+  article_id: 'article_id', articleId: 'article_id',
+  audio_id: 'audio_id', group_id: 'group_id', group_type: 'group_type',
+  status: 'status', source_type: 'source_type', category: 'category',
+  date: 'date', type: 'type',
+};
+
+function filtersFromQuery(query, extra = []) {
+  const filters = [...extra];
+  const used = new Set(extra.map(([field]) => field));
+  for (const [key, raw] of Object.entries(query || {})) {
+    const field = LIST_FILTERS[key];
+    if (!field || used.has(field)) continue;
+    if (raw === undefined || raw === null || raw === '' || Array.isArray(raw)) continue;
+    used.add(field);
+    filters.push([field, raw]);
+  }
+  return filters;
+}
+
 /* ------------------------------ 路由 ------------------------------ */
 
 async function route(ctx) {
@@ -296,11 +357,24 @@ async function route(ctx) {
   }
 
   if (path === '/words/grouped/list' && method === 'GET') {
-    const r = await db.collection('words')
-      .where({ userId: uid, group_type: query.group_type || 'polysemous' })
-      .limit(1000)
-      .get();
-    return reply(200, (r.data || []).map(normalize));
+    const docs = await queryByFilters(
+      db.collection('words'),
+      { userId: uid },
+      filtersFromQuery(query, [['group_type', query.group_type || 'polysemous']]),
+      1000,
+    );
+    return reply(200, docs.map(normalize));
+  }
+
+  // 阅读生词：按来源筛选，不能被通用「按 _id 取单条」分支吞掉
+  if (path === '/words/reading' && method === 'GET') {
+    const docs = await queryByFilters(
+      db.collection('words'),
+      { userId: uid },
+      [['source_type', 'reading']],
+      1000,
+    );
+    return reply(200, docs.map(normalize));
   }
 
   if (path === '/data/export' && method === 'GET') {
@@ -361,6 +435,11 @@ async function route(ctx) {
         createdAt: now,
         updatedAt: now,
       };
+      // 一词多义 / 相似词组：整批共用 group_id，供 /words/grouped/list 聚合
+      const groupType = item.group_type ?? body.group_type ?? body.groupType;
+      const groupId = item.group_id ?? body.group_id ?? body.groupId;
+      if (groupType) doc.group_type = groupType;
+      if (groupId) doc.group_id = groupId;
       const added = await col.add(doc);
       created.push({ id: added.id, ...doc });
     }
@@ -372,9 +451,8 @@ async function route(ctx) {
     const field = { wordbook: 'wordbook_id', article: 'article_id', audio: 'audio_id' }[segments[1]];
     if (field) {
       const value = decodeURIComponent(segments[2]);
-      const key = /^\d+$/.test(value) ? Number(value) : value;
-      const r = await col.where({ userId: uid, [field]: key }).limit(1000).get();
-      return reply(200, (r.data || []).map((d) => normalize(d)));
+      const docs = await queryByFilters(col, { userId: uid }, [[field, value]], 1000);
+      return reply(200, docs.map(normalize));
     }
   }
 
@@ -392,8 +470,11 @@ async function route(ctx) {
   }
 
   if (!id && method === 'GET') {
-    const r = await col.where({ userId: uid }).limit(Number(query.limit) || 1000).get();
-    return reply(200, (r.data || []).map((d) => normalize(d)));
+    // 关键：/words?chapter_id=X 必须只返回该章节的单词，
+    // 否则所有单词书会互相串数据。
+    const limit = Number(query.limit) || 1000;
+    const docs = await queryByFilters(col, { userId: uid }, filtersFromQuery(query), limit);
+    return reply(200, docs.map(normalize));
   }
 
   if (!id && method === 'POST') {

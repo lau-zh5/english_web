@@ -85,9 +85,19 @@ Module._load = function patched(request, parent, isMain) {
 const fn = require(path.resolve(__dirname, '../cloudbase/functions/english-api/index.js'));
 
 function ev(method, apiPath, body, token) {
+  const [rawPath, qs] = String(apiPath).split('?');
+  const queryStringParameters = {};
+  if (qs) {
+    for (const pair of qs.split('&')) {
+      if (!pair) continue;
+      const [k, v = ''] = pair.split('=');
+      queryStringParameters[decodeURIComponent(k)] = decodeURIComponent(v);
+    }
+  }
   return {
     httpMethod: method,
-    path: `/api${apiPath}`,
+    path: `/api${rawPath}`,
+    queryStringParameters,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: body === undefined ? null : JSON.stringify(body),
     isBase64Encoded: false,
@@ -142,6 +152,29 @@ async function check(label, event, expectStatus, verify) {
   await check('本人可改名', ev('PUT', `/wordbooks/${created.id}`, { name: '改名成功' }, token), 200);
   await check('改名生效', ev('GET', '/wordbooks', undefined, token), 200, (d) => d[0].name === '改名成功');
 
+  console.log('--- 单词本 / 章节数据隔离（回归） ---');
+  const wbA = await check('建单词书 A（考研）', ev('POST', '/wordbooks', { name: '考研' }, token), 201, (d) => Boolean(d.id));
+  const wbB = await check('建单词书 B（雅思）', ev('POST', '/wordbooks', { name: '雅思' }, token), 201, (d) => Boolean(d.id));
+  const chA = await check('A 下建章节', ev('POST', '/chapters', { name: '核心词', wordbook_id: wbA.id }, token), 201, (d) => d.wordbook_id === wbA.id);
+  const chB = await check('B 下建章节', ev('POST', '/chapters', { name: '高频词', wordbook_id: wbB.id }, token), 201, (d) => d.wordbook_id === wbB.id);
+  await check('A 章节加单词', ev('POST', '/words', { word: 'abandon', meaning: '放弃', wordbook_id: wbA.id, chapter_id: chA.id }, token), 201);
+  await check('A 章节批量加', ev('POST', '/words/batch', { words: [{ word: 'abstract', meaning: '抽象的' }], wordbook_id: wbA.id, chapter_id: chA.id }, token), 201);
+  await check('B 章节加单词', ev('POST', '/words', { word: 'academic', meaning: '学术的', wordbook_id: wbB.id, chapter_id: chB.id }, token), 201);
+  await check('按章节查 A 只有 A 的词', ev('GET', `/words?chapter_id=${chA.id}`, undefined, token), 200, (d) => d.length === 2 && d.every((w) => w.wordbook_id === wbA.id));
+  await check('按章节查 B 只有 B 的词', ev('GET', `/words?chapter_id=${chB.id}`, undefined, token), 200, (d) => d.length === 1 && d[0].word === 'academic');
+  await check('按单词书查 A', ev('GET', `/words?wordbook_id=${wbA.id}`, undefined, token), 200, (d) => d.length === 2 && d.every((w) => String(w.chapter_id) === String(chA.id)));
+  await check('按单词书查 B', ev('GET', `/words?wordbook_id=${wbB.id}`, undefined, token), 200, (d) => d.length === 1 && d[0].word === 'academic');
+  await check('组合条件不串数据', ev('GET', `/words?wordbook_id=${wbA.id}&chapter_id=${chB.id}`, undefined, token), 200, (d) => d.length === 0);
+  await check('按单词书查章节', ev('GET', `/chapters/wordbook/${wbA.id}`, undefined, token), 200, (d) => d.length === 1 && d[0].name === '核心词');
+  await check('不传条件返回全部 3 个', ev('GET', '/words', undefined, token), 200, (d) => d.length === 3);
+  // 旧数据里的外键是数字，新数据里是字符串 _id：查询必须两种都命中
+  await check('写入数字外键的旧数据', ev('POST', '/words', { word: 'legacy', meaning: '旧数据', wordbook_id: 7, chapter_id: 101 }, token), 201);
+  await check('数字外键也能按字符串条件查到', ev('GET', '/words?chapter_id=101', undefined, token), 200, (d) => d.length === 1 && d[0].word === 'legacy');
+  await check('分组写入带归属', ev('POST', '/words/batch', { words: [{ word: 'adapt', meaning: '适应' }, { word: 'adept', meaning: '熟练的' }], wordbook_id: wbA.id, chapter_id: chA.id, group_type: 'similar', group_id: 'g_A' }, token), 201, (d) => d.length === 2 && d.every((w) => w.group_id === 'g_A'));
+  await check('分组写入 B', ev('POST', '/words/batch', { words: [{ word: 'band', meaning: '乐队' }], wordbook_id: wbB.id, chapter_id: chB.id, group_type: 'similar', group_id: 'g_B' }, token), 201);
+  await check('分组按章节隔离', ev('GET', `/words/grouped/list?group_type=similar&chapter_id=${chA.id}`, undefined, token), 200, (d) => d.length === 2 && d.every((w) => w.group_id === 'g_A'));
+  await check('阅读生词接口返回数组', ev('GET', '/words/reading', undefined, token), 200, (d) => Array.isArray(d) && d.length === 0);
+
   console.log('--- 批量 / 导出 / 特殊接口 ---');
   await check('批量新增单词', ev('POST', '/words/batch', { words: [{ word: 'apple', meaning: '苹果' }, { word: 'banana', meaning: '香蕉' }] }, token), 201, (d) => d.length === 2);
   await check('每日一句', ev('GET', '/quotes/daily', undefined, token), 200, (d) => Boolean(d.content && d.author));
@@ -153,7 +186,17 @@ async function check(label, event, expectStatus, verify) {
 
   console.log('--- 删除 ---');
   await check('删除单词本', ev('DELETE', `/wordbooks/${created.id}`, undefined, token), 200, (d) => d.ok === true);
-  await check('删除后为空', ev('GET', '/wordbooks', undefined, token), 200, (d) => d.length === 0);
+  await check('删除后该词书不再出现', ev('GET', '/wordbooks', undefined, token), 200, (d) => d.every((w) => w.id !== created.id));
+
+  console.log('--- 跨账号隔离 ---');
+  const reg2 = await check(
+    '注册第二个账号',
+    ev('POST', '/users/register', { username: 'second_user', password: 'AnotherPass9!' }),
+    201,
+    (d) => Boolean(d.token),
+  );
+  await check('新账号看不到旧账号的单词', ev('GET', '/words', undefined, reg2.token), 200, (d) => d.length === 0);
+  await check('新账号看不到旧账号的单词书', ev('GET', '/wordbooks', undefined, reg2.token), 200, (d) => d.length === 0);
 
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed ? 1 : 0);

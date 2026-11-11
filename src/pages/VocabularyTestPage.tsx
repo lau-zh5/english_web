@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/Card';
 import { Button } from '../components/Button';
 import { useStore } from '../store';
-import { shuffleArray } from '../utils/helpers';
+import { idKey, sameId, shuffleArray } from '../utils/helpers';
 import { Word } from '../types';
 
 const ReviewIntervals = [1, 2, 4, 7, 15, 30];
@@ -40,17 +40,17 @@ export function VocabularyTestPage() {
   const [reviewedCount, setReviewedCount] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
 
-  const chapterIdNum = parseInt(chapterId || '0');
-  const currentChapter = chapters.find(c => c.id === chapterIdNum);
+  const chapterIdKey = idKey(chapterId);
+  const currentChapter = chapters.find(c => sameId(c.id, chapterIdKey));
 
   useEffect(() => {
-    if (chapterIdNum) {
-      loadWords(chapterIdNum);
+    if (chapterIdKey) {
+      loadWords(chapterIdKey);
     }
-  }, [chapterIdNum, loadWords]);
+  }, [chapterIdKey, loadWords]);
 
   useEffect(() => {
-    if (chapterIdNum && !isFinished && words.length > 0) {
+    if (chapterIdKey && !isFinished && words.length > 0) {
       const nonMasteredWords = words.filter(w => w.status !== 'mastered');
       
       if (nonMasteredWords.length === 0) {
@@ -76,7 +76,7 @@ export function VocabularyTestPage() {
         setShowMeaning(false);
       }
     }
-  }, [chapterIdNum, isFinished, words.length]);
+  }, [chapterIdKey, isFinished, words.length]);
 
   const currentWord = testWords[currentIndex];
   const progress = ((currentIndex + 1) / testWords.length) * 100;

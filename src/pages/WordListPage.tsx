@@ -7,7 +7,7 @@ import { Modal } from '../components/Modal';
 import { WordCard } from '../components/WordCard';
 import { useStore } from '../store';
 import { WordStatus } from '../types';
-import { getStatusLabel } from '../utils/helpers';
+import { generateId, getStatusLabel, idKey, sameId } from '../utils/helpers';
 import { filterMeaning } from '../utils/meaningFilter';
 import { apiFetch, apiUrl } from '../lib/api';
 
@@ -15,7 +15,7 @@ export function WordListPage() {
   const navigate = useNavigate();
   const { chapterId } = useParams<{ chapterId: string }>();
   const [searchParams] = useSearchParams();
-  const { words, chapters, loadChapters, loadWords, addWord, updateWord, deleteWord, batchAddWords, uploadWordAudio } = useStore();
+  const { words, chapters, orphanWords, loadChapters, loadAllChapters, loadWords, adoptOrphanWords, addWord, updateWord, deleteWord, batchAddWords, uploadWordAudio } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<WordStatus | 'all'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,7 +32,7 @@ export function WordListPage() {
   const [partOfSpeechMeanings, setPartOfSpeechMeanings] = useState<Record<string, string>>({});
   const [editingWord, setEditingWord] = useState<typeof words[0] | null>(null);
   const [batchText, setBatchText] = useState('');
-  const [uploadingWordId, setUploadingWordId] = useState<number | null>(null);
+  const [uploadingWordId, setUploadingWordId] = useState<string | number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isPolysemous, setIsPolysemous] = useState(false);
@@ -84,15 +84,16 @@ export function WordListPage() {
     { value: 'art.', label: 'art. (冠词)' },
   ];
 
-  const chapterIdNum = parseInt(chapterId || '0');
-  const currentChapter = chapters.find(c => c.id === chapterIdNum);
+  // 云端文档数据库的 _id 是字符串，不能用 parseInt 转成数字，否则归属信息会丢失
+  const chapterIdKey = chapterId ? String(chapterId) : '';
+  const currentChapter = chapters.find(c => sameId(c.id, chapterIdKey));
 
   useEffect(() => {
-    if (chapterIdNum) {
-      loadWords(chapterIdNum);
-      loadChapters(currentChapter?.wordbook_id || 0);
+    if (chapterIdKey) {
+      loadAllChapters();
+      loadWords(chapterIdKey);
     }
-  }, [chapterIdNum, loadWords, loadChapters, currentChapter?.wordbook_id]);
+  }, [chapterIdKey, loadWords, loadAllChapters]);
 
   const filteredWords = words.filter((word) => {
     const matchesSearch =
@@ -192,7 +193,7 @@ export function WordListPage() {
       } else {
         await updateWord(id, { status });
       }
-      await loadWords(chapterIdNum);
+      await loadWords(chapterIdKey);
     } catch (error) {
       console.error('Failed to update status:', error);
     }
@@ -308,14 +309,14 @@ export function WordListPage() {
       await addWord({
         ...newWord,
         meaning: processedMeaning,
-        chapter_id: chapterIdNum,
+        chapter_id: chapterIdKey,
         wordbook_id: currentChapter?.wordbook_id,
         is_polysemous: isPolysemous,
         is_similar: isSimilar,
       });
     }
     
-    await loadWords(chapterIdNum);
+    await loadWords(chapterIdKey);
     
     setNewWord({
       word: '',
@@ -397,17 +398,28 @@ export function WordListPage() {
       return;
     }
 
-    await batchAddWords(wordsToAdd, currentChapter?.wordbook_id, chapterIdNum);
-    await loadWords(chapterIdNum);
+    await batchAddWords(wordsToAdd, currentChapter?.wordbook_id, chapterIdKey);
+    await loadWords(chapterIdKey);
     setBatchText('');
     setIsBatchModalOpen(false);
   };
 
   const fetchGroupedWords = async (groupType: 'polysemous' | 'similar') => {
     try {
-      const response = await apiFetch(`/words/grouped/list?group_type=${groupType}`);
+      const response = await apiFetch(
+        `/words/grouped/list?group_type=${groupType}&chapter_id=${encodeURIComponent(chapterIdKey)}`
+      );
       const data = await response.json();
-      setGroupedWords(data);
+      const list: any[] = Array.isArray(data) ? data : [];
+      // 旧版云端会忽略过滤参数，这里再按当前章节收一次，避免跨单词书串词
+      const scoped = list.filter((word) => idKey(word.chapter_id) === chapterIdKey);
+      const buckets = new Map<string, any[]>();
+      scoped.forEach((word) => {
+        const key = idKey(word.group_id) || idKey(word.id);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key)!.push(word);
+      });
+      setGroupedWords(Array.from(buckets.values()));
       setShowGroupedView(groupType);
     } catch (error) {
       console.error('Failed to fetch grouped words:', error);
@@ -469,8 +481,9 @@ export function WordListPage() {
         body: JSON.stringify({
           words: wordsToAdd,
           wordbook_id: currentChapter?.wordbook_id,
-          chapter_id: chapterIdNum,
+          chapter_id: chapterIdKey,
           group_type: groupType,
+          group_id: generateId(),
         }),
       });
       
@@ -479,7 +492,7 @@ export function WordListPage() {
       }
       
       alert('添加成功！');
-      await loadWords(chapterIdNum);
+      await loadWords(chapterIdKey);
       setNewWord({
         word: '',
         phonetic: '',
@@ -511,7 +524,7 @@ export function WordListPage() {
     setGroupWordList(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUploadClick = (wordId: number) => {
+  const handleUploadClick = (wordId: string | number) => {
     setUploadingWordId(wordId);
     fileInputRef.current?.click();
   };
@@ -624,6 +637,25 @@ export function WordListPage() {
         </div>
       </header>
 
+      {orphanWords.length > 0 && (
+        <Card className="mb-6">
+          <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700">
+              发现 {orphanWords.length} 个早期录入的单词没有记录章节归属，因此不会显示在单词本里。
+            </p>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await adoptOrphanWords(chapterIdKey, currentChapter?.wordbook_id);
+                await loadWords(chapterIdKey);
+              }}
+            >
+              归入本章节
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {currentChapter?.audio_path && (
         <Card className="mb-6 bg-green-50 border-green-200">
           <CardContent className="p-4">
@@ -632,7 +664,7 @@ export function WordListPage() {
               <span className="text-green-700">本章节已上传音频</span>
               <audio 
                 controls 
-                src={apiUrl(`/chapters/${chapterIdNum}/audio`)}
+                src={apiUrl(`/chapters/${chapterIdKey}/audio`)}
                 className="flex-1 h-8"
               />
             </div>
@@ -978,7 +1010,7 @@ export function WordListPage() {
                   isHighlighted={isHighlighted && isAnimating}
                 />
                 <button
-                  onClick={() => handleUploadClick(typeof word.id === 'string' ? parseInt(word.id) : word.id)}
+                  onClick={() => handleUploadClick(word.id)}
                   className="absolute top-2 right-2 p-1.5 rounded-lg bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
                   title="上传音频"
                 >

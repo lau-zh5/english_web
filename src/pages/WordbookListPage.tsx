@@ -51,7 +51,7 @@ export function WordbookListPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (!confirm('确定要删除这个单词书吗？')) return;
     await apiFetch(`/wordbooks/${id}`, { method: 'DELETE' });
     await deleteWordbook(id);

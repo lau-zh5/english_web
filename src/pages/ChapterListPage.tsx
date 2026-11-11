@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { useStore } from '../store';
 import { Chapter } from '../types';
+import { idKey, sameId } from '../utils/helpers';
 
 export function ChapterListPage() {
   const navigate = useNavigate();
@@ -14,18 +15,19 @@ export function ChapterListPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [formData, setFormData] = useState({ name: '', chapter_order: 0 });
-  const [uploadingChapterId, setUploadingChapterId] = useState<number | null>(null);
+  const [uploadingChapterId, setUploadingChapterId] = useState<string | number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const wordbookIdNum = parseInt(wordbookId || '0');
-  const currentWordbook = wordbooks.find(w => w.id === wordbookIdNum);
+  // 云端 _id 是字符串，不能用 parseInt
+  const wordbookIdKey = idKey(wordbookId);
+  const currentWordbook = wordbooks.find(w => sameId(w.id, wordbookIdKey));
 
   useEffect(() => {
     loadWordbooks();
-    if (wordbookIdNum) {
-      loadChapters(wordbookIdNum);
+    if (wordbookIdKey) {
+      loadChapters(wordbookIdKey);
     }
-  }, [loadWordbooks, loadChapters, wordbookIdNum]);
+  }, [loadWordbooks, loadChapters, wordbookIdKey]);
 
   const handleOpenModal = (chapter?: Chapter) => {
     if (chapter) {
@@ -44,28 +46,28 @@ export function ChapterListPage() {
     if (editingChapter) {
       await useStore.getState().updateChapter(editingChapter.id, formData);
     } else {
-      await addChapter(wordbookIdNum, formData.name, formData.chapter_order);
+      await addChapter(wordbookIdKey, formData.name, formData.chapter_order);
     }
     
-    await loadChapters(wordbookIdNum);
+    await loadChapters(wordbookIdKey);
     
     setIsModalOpen(false);
     setFormData({ name: '', chapter_order: 0 });
     setEditingChapter(null);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm('确定要删除这个章节吗？章节内的单词也会被删除。')) {
       await deleteChapter(id);
-      await loadChapters(wordbookIdNum);
+      await loadChapters(wordbookIdKey);
     }
   };
 
-  const handleEnter = (chapterId: number) => {
+  const handleEnter = (chapterId: string | number) => {
     navigate(`/vocabulary/chapter/${chapterId}`);
   };
 
-  const handleUploadClick = (chapterId: number) => {
+  const handleUploadClick = (chapterId: string | number) => {
     setUploadingChapterId(chapterId);
     fileInputRef.current?.click();
   };
@@ -76,7 +78,7 @@ export function ChapterListPage() {
     
     try {
       await uploadChapterAudio(uploadingChapterId, file);
-      await loadChapters(wordbookIdNum);
+      await loadChapters(wordbookIdKey);
       alert('音频上传成功！');
     } catch (error) {
       alert('音频上传失败，请重试。');

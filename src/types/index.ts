@@ -5,8 +5,8 @@ export interface Word {
   meaning: string;
   example: string;
   status: 'new' | 'learning' | 'mastered';
-  wordbook_id?: number | null;
-  chapter_id?: number | null;
+  wordbook_id?: number | string | null;
+  chapter_id?: number | string | null;
   audio_path?: string | null;
   wordbook_name?: string;
   chapter_name?: string;
@@ -21,7 +21,7 @@ export interface Word {
 }
 
 export interface Wordbook {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   word_count?: number;
@@ -32,8 +32,8 @@ export interface Wordbook {
 }
 
 export interface Chapter {
-  id: number;
-  wordbook_id: number;
+  id: number | string;
+  wordbook_id: number | string;
   name: string;
   chapter_order: number;
   audio_path?: string | null;

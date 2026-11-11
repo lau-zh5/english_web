@@ -2,6 +2,20 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * 统一把记录 ID 转成字符串再比较 / 传递。
+ * 云端用的是 CloudBase 文档数据库，_id 可能是字符串（ObjectId）也可能是
+ * 旧数据里的自增数字；不能用 parseInt 处理，否则字符串 ID 会变成 NaN。
+ */
+export function idKey(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+export function sameId(a: unknown, b: unknown): boolean {
+  const left = idKey(a);
+  return left !== '' && left === idKey(b);
+}
+
 export function formatDate(date: string): string {
   return new Date(date).toLocaleDateString('zh-CN', {
     year: 'numeric',
