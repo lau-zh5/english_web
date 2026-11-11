@@ -1,7 +1,7 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { apiFetch, mediaUrl, clearSession } from '../lib/api';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Settings } from 'lucide-react';
 import { Logo } from './Logo';
 import { TabBar } from './TabBar';
 import { navItems } from './nav';
@@ -14,7 +14,7 @@ interface LayoutProps {
 
 /**
  * 三套版式共用一份导航数据：
- *   phone   (<768)  顶部标题栏 + 底部标签栏（主导航 + 头像/我的 + 退出账号），无侧栏/抽屉
+ *   phone   (<768)  顶部标题栏（左上角头像 → 设置/退出登录二级菜单）+ 底部 5 项标签栏，无侧栏/抽屉
  *   tablet  (768~1023) 常驻紧凑侧栏（图标 + 小字），内容区留出更多宽度
  *   desktop (>=1024) 常驻完整侧栏（含每日一句、头像、退出）
  * 也可通过右上角「界面版式」手动覆盖，偏好按浏览器本地存储。
@@ -31,10 +31,35 @@ export function Layout({ children }: LayoutProps) {
     source: undefined,
   });
   const { currentUser, loadCurrentUser } = useStore();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCurrentUser();
   }, [loadCurrentUser]);
+
+  // 账号菜单：点外部 / 按 Esc / 换页时自动收起
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAccountMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [accountMenuOpen]);
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchDailyQuote = async () => {
@@ -63,16 +88,58 @@ export function Layout({ children }: LayoutProps) {
   }`;
 
   const contentClass = isPhone
-    ? 'px-4 pb-36 pt-16'
+    ? 'px-4 pb-28 pt-16'
     : isTablet
       ? 'px-6 pb-8 pt-14'
       : 'px-8 pb-8 pt-14';
 
   return (
     <div className="min-h-screen">
-      {/* 手机版：顶部标题栏，居中 Logo；导航全部交给底部标签栏 */}
+      {/* 手机版：顶部标题栏，左上角头像 → 设置/退出登录，居中 Logo；导航交给底部标签栏 */}
       {isPhone && (
         <header className="lq-appbar">
+          <div className="lq-appbar-account" ref={accountRef}>
+            <button
+              type="button"
+              className="lq-appbar-avatar"
+              aria-label="账号菜单"
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
+              onClick={() => setAccountMenuOpen((v) => !v)}
+            >
+              {currentUser?.avatar ? (
+                <img src={mediaUrl(currentUser.avatar)} alt="" />
+              ) : (
+                <User size={18} />
+              )}
+            </button>
+
+            {accountMenuOpen && (
+              <div className="lq-account-menu" role="menu">
+                <p className="lq-account-menu-name">{currentUser?.username || '我的账号'}</p>
+                <div className="lq-account-menu-divider" />
+                <Link
+                  to="/profile"
+                  className="lq-account-menu-item"
+                  role="menuitem"
+                  onClick={() => setAccountMenuOpen(false)}
+                >
+                  <Settings size={16} />
+                  设置
+                </Link>
+                <button
+                  type="button"
+                  className="lq-account-menu-item is-danger"
+                  role="menuitem"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} />
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
+
           <Link to="/" className="lq-appbar-title">
             <Logo size="sm" />
             <span>English</span>

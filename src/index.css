@@ -1194,65 +1194,105 @@
 .lq-tabbar-item.is-active { color: var(--accent); font-weight: 600; }
 .lq-tabbar-item:active { transform: scale(0.94); }
 
-/* 底部栏第二行：头像/我的 + 退出账号，等价于桌面侧栏底部的两项功能 */
-.lq-tabbar-account {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 5px 14px 6px;
-  border-top: 1px solid var(--lq-stroke, rgba(120, 120, 128, 0.16));
+/* 顶部标题栏左上角：账号头像 + 二级菜单（设置 / 退出登录）
+   独立样式，不依赖 .ui-scope —— appbar 挂在 ui-scope 之外 */
+.lq-appbar-account {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 45;
 }
-.lq-tabbar-account-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 3px 0;
-  border-radius: 10px;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 500;
-  text-decoration: none;
-}
-.lq-tabbar-account-user.is-active { color: var(--accent); font-weight: 600; }
-.lq-tabbar-account-user:active { opacity: 0.65; }
-.lq-tabbar-avatar {
+.lq-appbar-avatar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--lq-stroke, rgba(120, 120, 128, 0.22));
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   background: linear-gradient(135deg, #5aa9ff, #0a63d6);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(10, 99, 214, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.lq-tabbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.lq-tabbar-account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lq-tabbar-account-chevron { flex: 0 0 auto; opacity: 0.55; }
-.lq-tabbar-logout {
-  display: inline-flex;
+/* 44px 触控热区，不改变视觉尺寸 */
+.lq-appbar-avatar::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; }
+.lq-appbar-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.lq-appbar-avatar:active { transform: scale(0.94); }
+
+.lq-account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 70;
+  width: 168px;
+  padding: 6px;
+  border-radius: 16px;
+  /* 菜单要压住下方正文：iOS 上下文菜单式近实心材质。
+     appbar 自身已带 backdrop-filter，嵌套第二层模糊在部分浏览器会削弱背景色导致透字，
+     故这里只用实色 + 高光 + 阴影，保证文字可读。 */
+  background: #fbfbfd;
+  border: 1px solid var(--lq-stroke, rgba(120, 120, 128, 0.18));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform-origin: top left;
+  animation: lq-account-menu-in 0.18s ease-out;
+}
+@keyframes lq-account-menu-in {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.dark .lq-account-menu {
+  background: #26262e;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.lq-account-menu-name {
+  margin: 4px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lq-account-menu-divider {
+  height: 1px;
+  margin: 2px 6px 4px;
+  background: var(--lq-stroke, rgba(120, 120, 128, 0.18));
+}
+.lq-account-menu-item {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 10px;
+  gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: var(--danger, #d70015);
+  color: var(--text-1);
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
-.lq-tabbar-logout:active { background: rgba(215, 0, 21, 0.1); transform: scale(0.96); }
+.lq-account-menu-item:hover { background: var(--lq-fill-hover, rgba(120, 120, 128, 0.12)); }
+.lq-account-menu-item.is-danger { color: var(--danger, #d70015); }
+.lq-account-menu-item.is-danger:hover { background: rgba(215, 0, 21, 0.1); }
 
 /* 平板版紧凑侧栏（88px 图标栏） */
 .lq-side-compact {
@@ -1515,4 +1555,5 @@ body[data-layout='phone'] .wordlist-filters .wordlist-date svg {
   .lq-side-compact,
   .lq-side-avatar,
   .lq-side-logout { transition: none !important; }
+  .lq-account-menu { animation: none !important; }
 }
