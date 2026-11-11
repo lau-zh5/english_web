@@ -140,9 +140,9 @@ export function ChapterListPage() {
           {chapters.map((chapter, index) => (
             <Card key={chapter.id} hover className="group">
               <CardContent className="p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="chapter-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div
-                    className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
+                    className="chapter-info flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
                     onClick={() => handleEnter(chapter.id)}
                   >
                     <div className="w-8 h-8 rounded-lg bg-accent-100 flex items-center justify-center text-accent-600 font-semibold">
@@ -161,13 +161,15 @@ export function ChapterListPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                  <div className="chapter-actions flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleUploadClick(chapter.id); }}
+                      title="上传音频"
+                      aria-label="上传音频"
                       className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-accent-50 text-gray-600 hover:text-accent-600 flex items-center gap-1.5 text-sm transition-colors whitespace-nowrap"
                     >
                       <Upload size={14} />
-                      上传音频
+                      <span className="chapter-upload-label">上传音频</span>
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleOpenModal(chapter); }}

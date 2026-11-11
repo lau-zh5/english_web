@@ -1297,6 +1297,159 @@ body[data-layout-mode='phone'] .ui-scope [class*='grid-cols-4'] {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
 
+/* ============================================================
+   手机端紧凑布局（仅 body[data-layout='phone'] 生效）
+   桌面 / 平板保持原有 DOM 与排布，不受以下规则影响
+   ============================================================ */
+
+/* 图1 单词书页：标题独占一行，三个入口按钮等宽等高、统一蓝色胶囊、同一行 */
+body[data-layout='phone'] .wordbook-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+body[data-layout='phone'] .wordbook-actions > div { display: contents; }
+body[data-layout='phone'] .wordbook-actions h1 { grid-column: 1 / -1; margin-bottom: 2px; }
+body[data-layout='phone'] .ui-scope .wordbook-actions button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 40px !important;
+  padding: 0 4px !important;
+  gap: 3px;
+  font-size: 12px !important;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px !important;
+}
+body[data-layout='phone'] .wordbook-actions button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+/* 绿色「阅读词汇」彻底套用与主按钮相同的玻璃变量，三个按钮完全一致 */
+body[data-layout='phone'] .ui-scope .wordbook-actions button.lq-chip {
+  --lq-current: var(--lq-accent);
+  --lq-current-hover: var(--lq-accent-hover);
+  --lq-current-stroke: rgba(255, 255, 255, 0.3);
+  --lq-current-shadow: var(--lq-accent-shadow);
+  background: var(--lq-current) !important;
+  border: 1px solid var(--lq-current-stroke) !important;
+  box-shadow: var(--lq-current-shadow) !important;
+  backdrop-filter: saturate(180%) blur(18px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(18px) !important;
+}
+body[data-layout='phone'] .ui-scope .wordbook-actions button.lq-chip:hover {
+  background: var(--lq-current-hover) !important;
+  box-shadow: var(--lq-current-shadow) !important;
+}
+
+/* 图2 章节管理：把整组操作按钮移到章节标题右侧（截图蓝框位置） */
+body[data-layout='phone'] .chapter-card { position: relative; display: block; }
+body[data-layout='phone'] .chapter-info { padding-right: 156px; }
+body[data-layout='phone'] .chapter-info h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-layout='phone'] .chapter-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+body[data-layout='phone'] .ui-scope .chapter-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 11px !important;
+  font-size: 12px;
+}
+body[data-layout='phone'] .chapter-actions .chapter-upload-label { display: none; }
+body[data-layout='phone'] .chapter-actions svg { width: 15px; height: 15px; flex: 0 0 auto; }
+
+/* 图3 单词列表顶部：四个按钮缩小，一行等宽显示 */
+body[data-layout='phone'] .wordlist-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+body[data-layout='phone'] .wordlist-actions > * { min-width: 0; width: 100%; }
+body[data-layout='phone'] .wordlist-actions > a { display: block; }
+body[data-layout='phone'] .ui-scope .wordlist-actions button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 34px !important;
+  padding: 0 3px !important;
+  gap: 2px;
+  font-size: 11px !important;
+  white-space: nowrap;
+  border-radius: 999px !important;
+}
+body[data-layout='phone'] .wordlist-actions button svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 0 !important;
+  flex: 0 0 auto;
+}
+
+/* 图4 搜索区：搜索框独占一行，「隐藏全部释义」与「按日期筛选」并排一行 */
+body[data-layout='phone'] .wordlist-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+body[data-layout='phone'] .wordlist-filters > .wordlist-search {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+body[data-layout='phone'] .wordlist-filters > .wordlist-meanings,
+body[data-layout='phone'] .wordlist-filters > .wordlist-date {
+  width: 100%;
+  min-width: 0;
+}
+/* 分组视图下没有日期筛选，让释义按钮占满整行 */
+body[data-layout='phone'] .wordlist-filters > .wordlist-meanings:last-child {
+  grid-column: 1 / -1;
+}
+body[data-layout='phone'] .ui-scope .wordlist-filters > .wordlist-meanings,
+body[data-layout='phone'] .ui-scope .wordlist-filters .wordlist-date button:first-child {
+  height: 36px !important;
+  min-height: 0 !important;
+  padding: 0 6px !important;
+  font-size: 12px !important;
+  white-space: nowrap;
+  border-radius: 12px !important;
+}
+body[data-layout='phone'] .wordlist-filters .wordlist-date > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+body[data-layout='phone'] .wordlist-filters .wordlist-date button:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body[data-layout='phone'] .wordlist-filters .wordlist-date svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lq-tabbar-item,
   .lq-side-compact,

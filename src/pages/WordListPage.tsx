@@ -576,7 +576,7 @@ export function WordListPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="wordlist-actions flex flex-wrap items-center gap-2">
           <Link to={`/vocabulary/test/${chapterId}`}>
             <Button variant="outline">
               <Shuffle size={18} className="mr-2" />
@@ -685,8 +685,8 @@ export function WordListPage() {
 
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center">
-            <div className="w-full sm:w-1/2 lg:w-2/3 relative">
+          <div className="wordlist-filters flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center">
+            <div className="wordlist-search w-full sm:w-1/2 lg:w-2/3 relative">
               <Search
                 size={18}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -701,13 +701,13 @@ export function WordListPage() {
             </div>
             <button
               onClick={toggleAllMeanings}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors whitespace-nowrap"
+              className="wordlist-meanings px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors whitespace-nowrap"
             >
               {showAllMeanings ? '隐藏全部释义' : '显示全部释义'}
             </button>
             
             {!showGroupedView && (
-              <div className="relative z-[100]">
+              <div className="wordlist-date relative z-[100]">
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setShowDatePicker(!showDatePicker)}
