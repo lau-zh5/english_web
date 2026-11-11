@@ -513,6 +513,20 @@
   --lq-current-shadow: none;
 }
 
+/* 登录 / 注册切换：两个独立按钮，各自带玻璃底与圆角，中间留空 */
+.ui-scope .lq-auth-tab { min-height: 44px; }
+.ui-scope .lq-auth-tab--idle {
+  --lq-current: var(--lq-fill);
+  --lq-current-hover: var(--lq-fill-hover);
+  --lq-current-press: var(--lq-fill-press);
+  --lq-current-stroke: var(--lq-stroke);
+  --lq-current-shadow: var(--lq-shadow);
+  color: var(--text-2) !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ui-scope .lq-auth-tab--idle:hover { color: var(--accent) !important; }
+}
+
 /* 答题反馈：正确 / 错误必须保留状态色，不能被统一玻璃盖掉 */
 .ui-scope :is(button[class*='border-green-500']) {
   background: rgba(36, 138, 61, 0.14);

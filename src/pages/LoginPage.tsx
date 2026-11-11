@@ -107,14 +107,16 @@ export function LoginPage() {
             <p className="mt-1.5 text-sm text-tertiary">开启你的英语学习之旅</p>
           </div>
 
-          <div className="flex p-1 mb-6 rounded-2xl" style={{ background: 'var(--input-bg)' }}>
+          {/* 两个独立玻璃按钮，中间留空，不再共用一个分段胶囊 */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
             {(['login', 'register'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => switchMode(m)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  mode === m ? 'lq-btn--primary text-white shadow-md' : 'text-secondary hover:text-primary'
+                aria-pressed={mode === m}
+                className={`lq-auth-tab w-full py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+                  mode === m ? 'lq-btn--primary text-white' : 'lq-auth-tab--idle'
                 }`}
               >
                 {m === 'login' ? '登录' : '注册账号'}
