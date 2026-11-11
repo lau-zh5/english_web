@@ -1564,6 +1564,41 @@ body[data-layout='phone'] .wordlist-filters .wordlist-date svg {
   flex: 0 0 auto;
 }
 
+/* ---------- 手机端：听力训练 / 阅读理解 文字排版对齐单词本 ----------
+   单词本手机版的层级：h1 = 系统字体栈 / 24px / 700 / 32px 行高 / --text-1；
+   卡片标题 h3 = 18px / 600；副文字与按钮 = 14px / 400 与 12px / 600。
+   这两个页面原本用 font-display（SF Pro Display，无中文字体）+ 30px 标题，
+   故在手机端统一字体族、字号与字重；桌面/平板保持原样。 */
+body[data-layout='phone'] :is(.page-listening, .page-reading) :is(h1, h2, h3, h4) {
+  font-family: inherit;
+  color: var(--text-1);
+}
+body[data-layout='phone'] :is(.page-listening, .page-reading) h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+body[data-layout='phone'] :is(.page-listening, .page-reading) h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
+}
+body[data-layout='phone'] :is(.page-listening, .page-reading) header p {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  color: var(--text-3);
+}
+body[data-layout='phone'] :is(.page-listening, .page-reading) p.text-gray-500 {
+  font-size: 14px;
+  line-height: 20px;
+}
+body[data-layout='phone'] :is(.page-listening, .page-reading) button {
+  font-size: 12px;
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lq-tabbar-item,
   .lq-side-compact,
