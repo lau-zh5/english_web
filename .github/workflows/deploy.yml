@@ -1,38 +1,23 @@
-name: 部署到 CloudBase（备用通道）
+name: 部署前端到 CloudBase
 
-# 主通道（推荐，免 API 密钥）：CloudBase 新版控制台的「静态网站托管 → 网站部署」。
-# 新版界面已没有「流水线管理」，也没有「部署命令」输入框——平台自己构建并上传产物。
-#   入口：https://tcb.cloud.tencent.com/dev#/static-hosting
-#         → 网站部署 → 新建部署 → Git 仓库 → 个人仓库（仓库是私有的，需授权 GitHub 账号）
-#   仓库 / 分支：lau-zh5/english_web ，main
-#   项目名称：english-web
-#   项目框架：React（选完会自动推荐构建参数，再按下表逐项核对）
-#   Node.js 版本：20
-#   目标目录：./                 代码在仓库根目录
-#   安装命令：npm ci
-#   构建命令：npm run build
-#   构建产物目录：./dist
-#   部署路径：/                 ★ 必须填根路径。填 /xxx 会发到子目录，
-#                                网关 / 仍指向根目录旧版，push 上线看似成功却不生效
-#   环境变量：留空               ★ 不要设 VITE_API_BASE，前端必须走同源 /api 网关
-#   自动部署：开                 绑定后按分支 push 触发；界面若有开关务必打开
+# 触发：push 到 main 自动部署；也可在 Actions 页面手动点 Run workflow
 #
-# 注意：Git 仓库部署只上传前端产物，不读取 cloudbaserc.json，
-#       不会重建云函数 english-api 与 /api 网关路由。这两者已用 CLI 部署好，保持不动即可。
-#       只有云函数 / 网关需要改动时，才用本 workflow 或本机 `tcb deploy --yes`。
-#       根路径部署会覆盖同名静态文件（预期行为），部署后需复验 /login 深链接仍返回 200。
+# 为什么用 GitHub Actions 而不是控制台「Git 仓库部署」：
+#   本环境（免费版）的「Git 个人仓库部署 / 公开仓库部署」入口并未真正绑定仓库——
+#   实测应用创建与“构建完成”仅差 1 秒，BuildConfig 为空，push 后不产生新版本，
+#   实际执行的是「自定义部署」（本地上传）。故改用 Actions 自行构建 + CLI 上传。
 #
-# 本 workflow 是备用通道，只在手动触发时运行，避免未配置密钥时 push 即失败。
-# 启用前在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
-#   TCB_SECRET_ID   腾讯云 API SecretId
-#   TCB_SECRET_KEY  腾讯云 API SecretKey
-#   TCB_ENV_ID      cloud1-d5giiwkzidd6e6c60
-#   AUTH_SECRET     登录 token 签名密钥（随机长字符串）
-# 若改由 GitHub Actions 承担 push 自动部署，把下面 on 改成：
-#   on: { push: { branches: [main] } }
+# 本 workflow 只做一件事：构建前端并覆盖静态托管根目录。
+#   不重建云函数 english-api、不改 /api 网关路由——这两者改动时用本机 `tcb deploy --yes`。
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -55,24 +40,25 @@ jobs:
       - name: 构建前端
         run: npm run build
 
-      - name: 云函数离线冒烟测试
-        run: node scripts/cloud-function-smoke.cjs
-
       - name: 安装 CloudBase CLI
         run: npm install -g @cloudbase/cli
-
-      - name: 写入动态变量（供 cloudbaserc.json 的 {{env.AUTH_SECRET}} 解析）
-        run: printf 'AUTH_SECRET=%s\n' "${{ secrets.AUTH_SECRET }}" > .env.local
 
       - name: 登录云开发
         run: tcb login --apiKeyId "${{ secrets.TCB_SECRET_ID }}" --apiKey "${{ secrets.TCB_SECRET_KEY }}"
 
-      - name: 校验声明式配置（schema / envId / 资源引用）
-        run: tcb validate
+      - name: 部署到静态托管根目录
+        # Linux 环境不存在 Git Bash 把 / 转成 PortableGit 路径的问题
+        run: tcb hosting deploy ./dist / -e "${{ secrets.TCB_ENV_ID }}"
 
-      - name: 校验声明式部署计划（不实际部署）
-        run: tcb deploy --dry-run -e "${{ secrets.TCB_ENV_ID }}"
-
-      - name: 声明式部署（静态托管 + 云函数 + 网关路由）
-        # --yes：非交互环境下放行「覆盖已存在函数」确认，否则云端会保守跳过
-        run: tcb deploy --yes -e "${{ secrets.TCB_ENV_ID }}"
+      - name: 复验线上
+        # 仅作信息输出，不让非 200 影响部署结果判定
+        run: |
+          BASE="https://cloud1-d5giiwkzidd6e6c60-1326691077.ap-shanghai.app.tcloudbase.com"
+          echo "首页产物："
+          curl -sS --max-time 20 -H "Cache-Control: no-cache" "$BASE/" | grep -oE 'assets/[^"]+' || true
+          for p in /login /data; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 20 "$BASE$p" || echo "ERR")
+            echo "$p -> $code"
+          done
+          echo "未登录 /api 应为 401："
+          curl -sS -o /dev/null -w "%{http_code}\n" --max-time 20 "$BASE/api/quotes/daily" || true
