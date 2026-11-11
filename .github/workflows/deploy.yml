@@ -1,16 +1,26 @@
 name: 部署到 CloudBase（备用通道）
 
-# 主通道推荐：CloudBase 控制台 → 流水线管理 → 授权 GitHub 仓库。
-# 该方式构建环境预装已登录的 CLI，免 API 密钥，且会自动读取 cloudbaserc.json
-# 一次部署静态托管 + 云函数 + /api 网关路由。
-#
-# 流水线「简易命令」模式是三个独立输入框，分别在高级设置里配 AUTH_SECRET：
+# 主通道（推荐，免 API 密钥）：CloudBase 新版控制台的「静态网站托管 → 网站部署」。
+# 新版界面已没有「流水线管理」，也没有「部署命令」输入框——平台自己构建并上传产物。
+#   入口：https://tcb.cloud.tencent.com/dev#/static-hosting
+#         → 网站部署 → 新建部署 → Git 仓库 → 个人仓库（仓库是私有的，需授权 GitHub 账号）
+#   仓库 / 分支：lau-zh5/english_web ，main
+#   项目名称：english-web
+#   项目框架：React（选完会自动推荐构建参数，再按下表逐项核对）
+#   Node.js 版本：20
+#   目标目录：./                 代码在仓库根目录
 #   安装命令：npm ci
-#   构建命令：npm run build && node scripts/cloud-function-smoke.cjs && printf 'AUTH_SECRET=%s\n' "$AUTH_SECRET" > .env.local
-#   部署命令：tcb validate && tcb deploy --dry-run && tcb deploy --yes
-#   目标目录：./    分支：main    自动部署：开
-# 说明：{{env.AUTH_SECRET}} 从 .env.local 读取；tcb deploy 不构建，只上传 dist，
-#       所以必须先 npm run build；--yes 用于非交互环境放行函数覆盖确认。
+#   构建命令：npm run build
+#   构建产物目录：./dist
+#   部署路径：/                 ★ 必须填根路径。填 /xxx 会发到子目录，
+#                                网关 / 仍指向根目录旧版，push 上线看似成功却不生效
+#   环境变量：留空               ★ 不要设 VITE_API_BASE，前端必须走同源 /api 网关
+#   自动部署：开                 绑定后按分支 push 触发；界面若有开关务必打开
+#
+# 注意：Git 仓库部署只上传前端产物，不读取 cloudbaserc.json，
+#       不会重建云函数 english-api 与 /api 网关路由。这两者已用 CLI 部署好，保持不动即可。
+#       只有云函数 / 网关需要改动时，才用本 workflow 或本机 `tcb deploy --yes`。
+#       根路径部署会覆盖同名静态文件（预期行为），部署后需复验 /login 深链接仍返回 200。
 #
 # 本 workflow 是备用通道，只在手动触发时运行，避免未配置密钥时 push 即失败。
 # 启用前在 GitHub 仓库 Settings → Secrets and variables → Actions 添加：
@@ -18,7 +28,8 @@ name: 部署到 CloudBase（备用通道）
 #   TCB_SECRET_KEY  腾讯云 API SecretKey
 #   TCB_ENV_ID      cloud1-d5giiwkzidd6e6c60
 #   AUTH_SECRET     登录 token 签名密钥（随机长字符串）
-# 需要 push 自动部署时，把下面 on 改成：on: { push: { branches: [main] } }
+# 若改由 GitHub Actions 承担 push 自动部署，把下面 on 改成：
+#   on: { push: { branches: [main] } }
 
 on:
   workflow_dispatch:
