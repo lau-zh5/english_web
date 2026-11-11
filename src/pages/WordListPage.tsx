@@ -642,10 +642,16 @@ export function WordListPage() {
           <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-700">
               发现 {orphanWords.length} 个早期录入的单词没有记录章节归属，因此不会显示在单词本里。
+              它们已无法自动判断原本属于哪本书，需要你手动归入。
             </p>
             <Button
               variant="outline"
               onClick={async () => {
+                const confirmed = confirm(
+                  `将这 ${orphanWords.length} 个单词全部归入「${currentChapter?.name || '本章节'}」。\n` +
+                  '如果它们原本分属不同单词书，建议先在「数据」页导出备份，之后可逐个编辑调整。确定继续吗？'
+                );
+                if (!confirmed) return;
                 await adoptOrphanWords(chapterIdKey, currentChapter?.wordbook_id);
                 await loadWords(chapterIdKey);
               }}

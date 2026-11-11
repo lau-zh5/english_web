@@ -366,6 +366,17 @@ async function route(ctx) {
     return reply(200, docs.map(normalize));
   }
 
+  // 早期版本写入的单词可能没有 chapter_id / wordbook_id（ID 被 parseInt 弄坏），
+  // 单独列出来，供前端提示用户归入某个章节，避免修复隔离后这些词「消失」。
+  if (path === '/words/orphans' && method === 'GET') {
+    const r = await db.collection('words').where({ userId: uid }).limit(1000).get();
+    const docs = (r.data || []).filter((d) => {
+      const v = d.chapter_id ?? d.chapterId;
+      return v === undefined || v === null || v === '' || String(v) === 'NaN';
+    });
+    return reply(200, docs.map(normalize));
+  }
+
   // 阅读生词：按来源筛选，不能被通用「按 _id 取单条」分支吞掉
   if (path === '/words/reading' && method === 'GET') {
     const docs = await queryByFilters(

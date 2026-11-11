@@ -233,16 +233,26 @@ export const useStore = create<AppState>((set) => ({
 
       // 云端旧版本会忽略查询参数、返回该账号的全部单词；
       // 这里按归属再过滤一次，确保不同单词书 / 章节之间互不可见。
+      const chapterOf = (word: any) => idKey(word.chapter_id ?? word.chapterId);
       const scoped = all.filter((word) =>
-        (!chapterId || idKey(word.chapter_id) === idKey(chapterId)) &&
-        (!wordbookId || idKey(word.wordbook_id) === idKey(wordbookId))
+        (!chapterId || chapterOf(word) === idKey(chapterId)) &&
+        (!wordbookId || idKey(word.wordbook_id ?? word.wordbookId) === idKey(wordbookId))
       );
-      const orphanWords = chapterId
-        ? all.filter((word) =>
-            idKey(word.chapter_id) === '' &&
-            (!wordbookId || idKey(word.wordbook_id) === '' || idKey(word.wordbook_id) === idKey(wordbookId))
-          )
+
+      // 云端修好后 /words?chapter_id=X 只返回本章节的词，无归属的旧数据
+      // 不再出现在结果里，因此额外查一次专用接口把它们捞出来。
+      let orphanWords: any[] = chapterId
+        ? all.filter((word) => chapterOf(word) === '')
         : [];
+      if (chapterId) {
+        try {
+          const orphanRes = await apiFetch('/words/orphans');
+          const orphanData = await orphanRes.json();
+          if (Array.isArray(orphanData)) orphanWords = orphanData;
+        } catch {
+          // 旧版云端没有该接口，用全量结果里筛出的即可
+        }
+      }
 
       const transformedData = scoped.map((word: any) => ({
         ...word,

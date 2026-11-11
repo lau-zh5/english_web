@@ -174,6 +174,11 @@ async function check(label, event, expectStatus, verify) {
   await check('分组写入 B', ev('POST', '/words/batch', { words: [{ word: 'band', meaning: '乐队' }], wordbook_id: wbB.id, chapter_id: chB.id, group_type: 'similar', group_id: 'g_B' }, token), 201);
   await check('分组按章节隔离', ev('GET', `/words/grouped/list?group_type=similar&chapter_id=${chA.id}`, undefined, token), 200, (d) => d.length === 2 && d.every((w) => w.group_id === 'g_A'));
   await check('阅读生词接口返回数组', ev('GET', '/words/reading', undefined, token), 200, (d) => Array.isArray(d) && d.length === 0);
+  const orphan = await check('写入一条无归属旧数据', ev('POST', '/words', { word: 'orphan', meaning: '无归属' }, token), 201, (d) => Boolean(d.id));
+  await check('孤儿词接口能找到它', ev('GET', '/words/orphans', undefined, token), 200, (d) => d.length === 1 && d[0].word === 'orphan');
+  await check('孤儿词归入 A 章节', ev('PUT', `/words/${orphan.id}`, { chapter_id: chA.id, wordbook_id: wbA.id }, token), 200);
+  await check('归位后按章节可查到', ev('GET', `/words?chapter_id=${chA.id}`, undefined, token), 200, (d) => d.some((w) => w.word === 'orphan'));
+  await check('归位后孤儿词列表清空', ev('GET', '/words/orphans', undefined, token), 200, (d) => d.length === 0);
 
   console.log('--- 批量 / 导出 / 特殊接口 ---');
   await check('批量新增单词', ev('POST', '/words/batch', { words: [{ word: 'apple', meaning: '苹果' }, { word: 'banana', meaning: '香蕉' }] }, token), 201, (d) => d.length === 2);
