@@ -59,7 +59,8 @@ jobs:
           TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
           TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
         # 用 env 传参，避免密钥直接拼在命令行里；非交互凭证登录，不会弹浏览器
-        run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY"
+        # --intl false：强制使用中国站。CI 跑在境外，不加会被判定为国际站而登录失败
+        run: tcb login --apiKeyId "$TCB_SECRET_ID" --apiKey "$TCB_SECRET_KEY" --intl false
 
       - name: 验证登录态
         run: tcb env list
