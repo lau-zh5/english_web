@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { apiJson, setSession, type Session } from '../lib/api';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'forgot';
 
 interface AuthResponse extends Session {
   error?: string;
+}
+
+interface HealthResponse {
+  emailVerification?: {
+    enabled?: boolean;
+    codeTtlSeconds?: number;
+    resendSeconds?: number;
+  };
 }
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -17,56 +25,140 @@ export function LoginPage() {
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<Mode>('login');
+  const [emailEnabled, setEmailEnabled] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // 邮箱验证码是可选能力：从云端健康接口读取开关，没配 SES 时保持原来的两步注册
+  useEffect(() => {
+    let alive = true;
+    apiJson<HealthResponse>('/health')
+      .then((d) => { if (alive) setEmailEnabled(Boolean(d.emailVerification?.enabled)); })
+      .catch(() => { if (alive) setEmailEnabled(false); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setError('');
+    setNotice('');
+    setCode('');
     setConfirmPassword('');
+    setCooldown(0);
+  };
+
+  const showError = (err: unknown) => {
+    setError(err instanceof Error ? err.message : '网络错误，请稍后重试');
+  };
+
+  const sendCode = async () => {
+    setError('');
+    setNotice('');
+    if (!EMAIL_RE.test(email.trim())) {
+      setError('请先填写正确的邮箱地址');
+      return;
+    }
+    setSending(true);
+    try {
+      await apiJson('/users/send-code', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim(),
+          scene: mode === 'forgot' ? 'reset' : 'register',
+        }),
+      });
+      setCooldown(60);
+      setNotice('验证码已发送，10 分钟内有效；没收到请检查垃圾箱');
+    } catch (err) {
+      showError(err);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
 
-    if (!USERNAME_RE.test(username)) {
-      setError('用户名需为 3-20 位字母、数字或下划线');
+    if (mode === 'forgot') {
+      if (!EMAIL_RE.test(email.trim())) { setError('请填写正确的邮箱地址'); return; }
+      if (!code.trim()) { setError('请填写邮箱验证码'); return; }
+      if (password.length < 8) { setError('新密码至少需要 8 位'); return; }
+      if (password !== confirmPassword) { setError('两次输入的密码不一致'); return; }
+      setLoading(true);
+      try {
+        await apiJson('/users/reset-password', {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), code: code.trim(), password }),
+        });
+        setPassword('');
+        setConfirmPassword('');
+        switchMode('login');
+        setNotice('密码已重置，请用新密码登录');
+      } catch (err) {
+        showError(err);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
-    if (password.length < 8) {
-      setError('密码至少需要 8 位');
-      return;
-    }
+
     if (mode === 'register') {
-      if (email && !EMAIL_RE.test(email)) {
-        setError('邮箱格式不正确');
-        return;
+      if (!USERNAME_RE.test(username)) { setError('用户名需为 3-20 位字母、数字或下划线'); return; }
+      if (emailEnabled && !EMAIL_RE.test(email.trim())) { setError('请填写正确的邮箱地址'); return; }
+      if (email && !EMAIL_RE.test(email.trim())) { setError('邮箱格式不正确'); return; }
+      if (password.length < 8) { setError('密码至少需要 8 位'); return; }
+      if (password !== confirmPassword) { setError('两次输入的密码不一致'); return; }
+      if (emailEnabled && !code.trim()) { setError('请填写邮箱验证码'); return; }
+      setLoading(true);
+      try {
+        const data = await apiJson<AuthResponse>('/users/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username,
+            password,
+            email: email.trim() || undefined,
+            ...(emailEnabled ? { code: code.trim() } : {}),
+          }),
+        });
+        setSession({
+          token: data.token,
+          id: data.id,
+          username: data.username,
+          email: data.email,
+        });
+        navigate('/');
+      } catch (err) {
+        showError(err);
+      } finally {
+        setLoading(false);
       }
-      if (password !== confirmPassword) {
-        setError('两次输入的密码不一致');
-        return;
-      }
+      return;
     }
 
+    if (!username.trim()) { setError('请输入用户名或邮箱'); return; }
     setLoading(true);
     try {
-      const payload =
-        mode === 'login'
-          ? { username, password }
-          : { username, password, email: email || undefined };
-
-      // 走统一 API 层：本地为 /api，上云后只需把 VITE_API_BASE 指向云端 HTTP 服务，
-      // 注册信息即写入云端数据库，无需改动这里的代码。
-      const data = await apiJson<AuthResponse>(
-        mode === 'login' ? '/users/login' : '/users/register',
-        { method: 'POST', body: JSON.stringify(payload) },
-      );
-
+      // 后端同时支持用户名与邮箱，统一用 account 字段
+      const data = await apiJson<AuthResponse>('/users/login', {
+        method: 'POST',
+        body: JSON.stringify({ account: username.trim(), password }),
+      });
       setSession({
         token: data.token,
         id: data.id,
@@ -75,7 +167,7 @@ export function LoginPage() {
       });
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '网络错误，请稍后重试');
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -83,6 +175,8 @@ export function LoginPage() {
 
   const inputClass =
     'w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 input-apple';
+
+  const needsCode = (mode === 'register' && emailEnabled) || mode === 'forgot';
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-10 overflow-hidden">
@@ -124,37 +218,85 @@ export function LoginPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">用户名</label>
-              <input
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="3-20 位字母、数字或下划线"
-                className={inputClass}
-              />
+          {mode === 'forgot' && (
+            <div className="flex items-center gap-3 mb-5 text-sm">
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="lq-auth-tab lq-auth-tab--idle px-3 py-1.5 rounded-xl text-xs font-medium"
+              >
+                返回登录
+              </button>
+              <span className="font-semibold text-primary">找回密码</span>
             </div>
+          )}
 
-            {mode === 'register' && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode !== 'forgot' && (
               <div>
                 <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">
-                  邮箱 <span className="opacity-70">（选填）</span>
+                  {mode === 'login' ? '用户名或邮箱' : '用户名'}
+                </label>
+                <input
+                  type="text"
+                  autoComplete={mode === 'login' ? 'username' : 'off'}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={mode === 'login' ? '用户名或注册邮箱' : '3-20 位字母、数字或下划线'}
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {mode !== 'login' && (
+              <div>
+                <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">
+                  邮箱{' '}
+                  <span className="opacity-70">
+                    （{(mode === 'forgot' || emailEnabled) ? '必填' : '选填'}）
+                  </span>
                 </label>
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="用于找回账号"
+                  placeholder={mode === 'forgot' ? '输入注册时填写的邮箱' : '用于验证账号与找回密码'}
                   className={inputClass}
                 />
               </div>
             )}
 
+            {needsCode && (
+              <div>
+                <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">邮箱验证码</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="6 位数字"
+                    className={`${inputClass} flex-1 min-w-0`}
+                  />
+                  <button
+                    type="button"
+                    onClick={sendCode}
+                    disabled={sending || cooldown > 0}
+                    className="lq-auth-tab lq-auth-tab--idle flex-shrink-0 px-4 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {sending ? '发送中...' : cooldown > 0 ? `${cooldown}s 后重发` : '获取验证码'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">密码</label>
+              <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">
+                {mode === 'forgot' ? '新密码' : '密码'}
+              </label>
               <input
                 type="password"
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -165,7 +307,7 @@ export function LoginPage() {
               />
             </div>
 
-            {mode === 'register' && (
+            {mode !== 'login' && (
               <div>
                 <label className="block text-xs font-medium text-tertiary mb-1.5 ml-1">确认密码</label>
                 <input
@@ -173,9 +315,32 @@ export function LoginPage() {
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="再输入一次密码"
+                  placeholder="再输入一次"
                   className={inputClass}
                 />
+              </div>
+            )}
+
+            {mode === 'login' && emailEnabled && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="text-xs font-medium hover:underline"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  忘记密码？
+                </button>
+              </div>
+            )}
+
+            {notice && (
+              <div
+                className="px-3.5 py-2.5 rounded-xl text-sm"
+                style={{ background: 'var(--lq-accent-soft)', color: 'var(--text-1)' }}
+                role="status"
+              >
+                {notice}
               </div>
             )}
 
@@ -196,21 +361,19 @@ export function LoginPage() {
             >
               {loading && <Loader2 size={16} className="animate-spin" />}
               {loading
-                ? mode === 'login'
-                  ? '登录中...'
-                  : '注册中...'
-                : mode === 'login'
-                  ? '登录'
-                  : '创建账号'}
+                ? mode === 'login' ? '登录中...' : mode === 'register' ? '注册中...' : '提交中...'
+                : mode === 'login' ? '登录' : mode === 'register' ? '创建账号' : '重置密码'}
             </button>
           </form>
 
           <div className="flex items-start gap-2 mt-5 px-1 text-xs text-tertiary leading-relaxed">
             <ShieldCheck size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--accent)' }} />
             <span>
-              {mode === 'register'
-                ? '账号信息经加密存储，写入云端账号；同一账号可在 iPhone、iPad、Windows 上同步学习数据。'
-                : '登录后可继续你的学习进度，数据来自云端账号。'}
+              {mode === 'forgot'
+                ? '验证码只会发送到你注册时填写的邮箱，10 分钟内有效；重置后请用新密码登录。'
+                : mode === 'register'
+                  ? '账号信息经加密存储，写入云端账号；同一账号可在 iPhone、iPad、Windows 上同步学习数据。'
+                  : '支持用户名或邮箱登录，登录后可继续你的学习进度，数据来自云端账号。'}
             </span>
           </div>
         </div>

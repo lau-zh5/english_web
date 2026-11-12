@@ -7,10 +7,12 @@
  * 前端无需改动：把 HTTP 访问服务的 /api/* 指到本函数即可同源调用。
  *
  * 集合：users / wordbooks / chapters / words / articles / questions /
- *       study_records / notes / audios / ebooks / daily_quotes
+ *       study_records / notes / audios / ebooks / daily_quotes / email_codes
  * 每条业务数据都带 userId，实现三端同账号共享、不同账号隔离。
  *
  * 部署后务必在云函数「环境变量」里设置 AUTH_SECRET（随机长字符串）。
+ * 邮箱验证码为可选能力：配齐 SES_* 四个环境变量后自动启用，未配置时
+ * 注册流程保持原样（不会把已有账号挡在门外）。详见下方 emailConfig()。
  */
 
 const crypto = require('crypto');
@@ -33,7 +35,7 @@ const DATA_COLLECTIONS = [
   'audios',
   'ebooks',
 ];
-const ALL_COLLECTIONS = ['users', 'daily_quotes', ...DATA_COLLECTIONS];
+const ALL_COLLECTIONS = ['users', 'daily_quotes', 'email_codes', ...DATA_COLLECTIONS];
 
 const QUOTES = [
   ['The only way to do great work is to love what you do.', 'Steve Jobs'],
@@ -128,6 +130,191 @@ function bearerOf(headers) {
 function uidOf(headers) {
   const payload = verifyToken(bearerOf(headers));
   return payload ? String(payload.uid) : 'public';
+}
+
+/* ----------------------- 邮箱验证 / 腾讯云 SES -----------------------
+ * 国内版 SES 的 SendEmail 默认只允许「模板发送」（Simple 仅对历史特批
+ * 账号开放），所以固定走 Template + TemplateData，模板变量用 {{code}}。
+ * 用云 API 3.0 的 TC3-HMAC-SHA256 手写签名直调 HTTPS，避免为发一封
+ * 验证码邮件引入整套腾讯云 SDK（免费环境依赖包越小越稳）。
+ */
+const CODE_TTL_MS = 10 * 60 * 1000;
+const CODE_RESEND_MS = 60 * 1000;
+const CODE_MAX_ATTEMPTS = 5;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
+function emailConfig() {
+  const secretId = process.env.SES_SECRET_ID || process.env.TCB_SECRET_ID || '';
+  const secretKey = process.env.SES_SECRET_KEY || process.env.TCB_SECRET_KEY || '';
+  const from = process.env.SES_FROM_ADDRESS || '';
+  const templateId = process.env.SES_TEMPLATE_ID || '';
+  return {
+    // 四项配齐才启用；EMAIL_VERIFY_ENABLED=0 可随时一键回退到原注册流程
+    enabled: process.env.EMAIL_VERIFY_ENABLED !== '0'
+      && Boolean(secretId && secretKey && from && templateId),
+    secretId,
+    secretKey,
+    from,
+    templateId,
+    region: process.env.SES_REGION || 'ap-guangzhou',
+    endpoint: process.env.SES_ENDPOINT || 'ses.tencentcloudapi.com',
+    replyTo: process.env.SES_REPLY_TO || '',
+  };
+}
+
+function sha256hex(input) {
+  return crypto.createHash('sha256').update(input).digest('hex');
+}
+
+function tc3Hmac(key, msg, encoding) {
+  return crypto.createHmac('sha256', key).update(msg).digest(encoding);
+}
+
+function tc3Headers({ secretId, secretKey, endpoint, region, action, payload }) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+  const service = 'ses';
+  const contentType = 'application/json; charset=utf-8';
+  const canonicalHeaders = `content-type:${contentType}\nhost:${endpoint}\n`;
+  const signedHeaders = 'content-type;host';
+  const canonicalRequest = [
+    'POST', '/', '', canonicalHeaders, signedHeaders, sha256hex(payload),
+  ].join('\n');
+  const credentialScope = `${date}/${service}/tc3_request`;
+  const stringToSign = [
+    'TC3-HMAC-SHA256', String(timestamp), credentialScope, sha256hex(canonicalRequest),
+  ].join('\n');
+  const secretDate = tc3Hmac(Buffer.from(`TC3${secretKey}`, 'utf8'), date);
+  const secretService = tc3Hmac(secretDate, service);
+  const secretSigning = tc3Hmac(secretService, 'tc3_request');
+  const signature = tc3Hmac(secretSigning, stringToSign, 'hex');
+  return {
+    'Content-Type': contentType,
+    Host: endpoint,
+    Authorization: `TC3-HMAC-SHA256 Credential=${secretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    'X-TC-Action': action,
+    'X-TC-Timestamp': String(timestamp),
+    'X-TC-Version': '2020-10-02',
+    'X-TC-Region': region,
+  };
+}
+
+function httpsPostFallback(endpoint, headers, payload) {
+  return new Promise((resolve, reject) => {
+    // 只有运行时没有全局 fetch 时才会走到这里（Node 18 默认有）
+    const https = require('https');
+    const req = https.request(
+      { hostname: endpoint, path: '/', method: 'POST', headers, timeout: 8000 },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+      },
+    );
+    req.on('timeout', () => req.destroy(new Error('SES 请求超时')));
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function sendSesCode(to, code, scene) {
+  const cfg = emailConfig();
+  const request = {
+    FromEmailAddress: cfg.from,
+    Destination: [to],
+    Subject: scene === 'register' ? 'English 注册验证码' : 'English 重置密码验证码',
+    Template: {
+      TemplateID: Number(cfg.templateId),
+      TemplateData: JSON.stringify({ code }),
+    },
+    TriggerType: 1,
+  };
+  if (cfg.replyTo) request.ReplyToAddresses = cfg.replyTo;
+
+  const payload = JSON.stringify(request);
+  const headers = tc3Headers({ ...cfg, action: 'SendEmail', payload });
+  const text = typeof globalThis.fetch === 'function'
+    ? await (async () => {
+      const res = await globalThis.fetch(`https://${cfg.endpoint}/`, {
+        method: 'POST', headers, body: payload,
+      });
+      const raw = await res.text();
+      if (!res.ok) throw new Error(`SES HTTP ${res.status}: ${raw.slice(0, 200)}`);
+      return raw;
+    })()
+    : await httpsPostFallback(cfg.endpoint, headers, payload);
+
+  let parsed = {};
+  try { parsed = JSON.parse(text); } catch { /* 空响应按失败处理 */ }
+  const result = parsed.Response;
+  if (!result || result.Error) {
+    const detail = result && result.Error
+      ? `${result.Error.Code}: ${result.Error.Message}`
+      : '响应格式异常';
+    throw new Error(`SES ${detail}`);
+  }
+  return result;
+}
+
+function codeHash(email, scene, code) {
+  return crypto.createHmac('sha256', SECRET).update(`${email}|${scene}|${code}`).digest('hex');
+}
+
+async function emailCodeRecords(email, scene) {
+  const r = await db.collection('email_codes').where({ email, scene }).limit(1000).get();
+  return (r.data || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+async function issueCode(email, scene) {
+  const now = Date.now();
+  const records = await emailCodeRecords(email, scene);
+  const latest = records[0];
+  if (latest && now - (latest.createdAt || 0) < CODE_RESEND_MS) {
+    fail(429, '验证码发送太频繁，请 60 秒后再试');
+  }
+
+  const code = String(crypto.randomInt(100000, 1000000));
+  const doc = {
+    email,
+    scene,
+    codeHash: codeHash(email, scene, code),
+    expiresAt: now + CODE_TTL_MS,
+    attempts: 0,
+    used: false,
+    createdAt: now,
+  };
+  await db.collection('email_codes').add(doc);
+  try {
+    await sendSesCode(email, code, scene);
+  } catch (e) {
+    await db.collection('email_codes').where({ codeHash: doc.codeHash }).remove();
+    console.error('[email] SES 发送失败：', e && e.message);
+    fail(502, '验证码邮件发送失败，请稍后重试或联系管理员');
+  }
+  return { ok: true, expiresIn: Math.floor(CODE_TTL_MS / 1000) };
+}
+
+async function consumeCode(email, scene, raw) {
+  const code = String(raw || '').trim();
+  const records = await emailCodeRecords(email, scene);
+  const record = records.find((d) => !d.used && d.expiresAt > Date.now());
+  if (!record) fail(400, '验证码已过期，请重新获取');
+  if ((record.attempts || 0) >= CODE_MAX_ATTEMPTS) {
+    fail(429, '错误次数过多，请重新获取验证码');
+  }
+  if (codeHash(email, scene, code) !== record.codeHash) {
+    await db.collection('email_codes').doc(record._id).update({
+      attempts: (record.attempts || 0) + 1,
+    });
+    fail(400, '验证码不正确');
+  }
+  await db.collection('email_codes').doc(record._id).update({ used: true, usedAt: Date.now() });
+  return true;
 }
 
 function validateRegistration({ username, password, email }) {
@@ -267,25 +454,45 @@ async function route(ctx) {
       time: new Date().toISOString(),
       collections: ALL_COLLECTIONS,
       hasSecret: Boolean(process.env.AUTH_SECRET),
+      emailVerification: {
+        enabled: emailConfig().enabled,
+        loginWithEmail: true,
+        codeTtlSeconds: Math.floor(CODE_TTL_MS / 1000),
+        resendSeconds: Math.floor(CODE_RESEND_MS / 1000),
+      },
     });
   }
 
   await ready();
 
-  /* ---------- 注册 / 登录 ---------- */
+  /* ---------- 注册 / 登录 / 邮箱验证 ---------- */
   if (path === '/users/register' && method === 'POST') {
     const invalid = validateRegistration(body);
     if (invalid) return reply(400, { error: invalid });
 
+    const cfg = emailConfig();
+    const email = normalizeEmail(body.email);
+    if (cfg.enabled) {
+      if (!EMAIL_RE.test(email)) return reply(400, { error: '请填写正确的邮箱地址' });
+      if (!String(body.code || '').trim()) return reply(400, { error: '请填写邮箱验证码' });
+    }
+
     const users = db.collection('users');
     const exists = await users.where({ username: body.username }).count();
     if (exists.total > 0) return reply(409, { error: '该用户名已被注册，请换一个' });
+    if (email) {
+      const dupEmail = await users.where({ email }).count();
+      if (dupEmail.total > 0) return reply(409, { error: '该邮箱已被注册，请直接登录或找回密码' });
+    }
+
+    if (cfg.enabled) await consumeCode(email, 'register', body.code);
 
     const now = Date.now();
     const doc = {
       username: body.username,
-      email: body.email || null,
+      email: email || null,
       password: hashPassword(body.password),
+      emailVerified: cfg.enabled,
       avatar: null,
       dailyWordGoal: 20,
       dailyListeningGoal: 30,
@@ -304,10 +511,16 @@ async function route(ctx) {
 
   if (path === '/users/login' && method === 'POST') {
     const users = db.collection('users');
-    const found = await users.where({ username: body.username }).limit(1).get();
-    const user = found.data && found.data[0];
+    const account = String(body.account || body.username || '').trim();
+    const byUsername = await users.where({ username: account }).limit(1).get();
+    let user = byUsername.data && byUsername.data[0];
+    // 允许用邮箱登录：用户名没命中时再按邮箱查一次
+    if (!user && account) {
+      const byEmail = await users.where({ email: normalizeEmail(account) }).limit(1).get();
+      user = byEmail.data && byEmail.data[0];
+    }
     if (!user || !verifyPassword(body.password || '', user.password)) {
-      return reply(401, { error: '用户名或密码错误' });
+      return reply(401, { error: '账号或密码错误' });
     }
     if (!isHashed(user.password)) {
       await users.doc(user._id).update({ password: hashPassword(body.password) });
@@ -320,8 +533,43 @@ async function route(ctx) {
     });
   }
 
+  if (path === '/users/send-code' && method === 'POST') {
+    if (!emailConfig().enabled) return reply(503, { error: '邮箱验证尚未启用' });
+    const scene = body.scene === 'reset' ? 'reset' : 'register';
+    const email = normalizeEmail(body.email);
+    if (!EMAIL_RE.test(email)) return reply(400, { error: '请填写正确的邮箱地址' });
+
+    const users = db.collection('users');
+    const found = await users.where({ email }).limit(1).get();
+    const exists = Boolean(found.data && found.data[0]);
+    if (scene === 'register' && exists) return reply(409, { error: '该邮箱已注册，请直接登录' });
+    if (scene === 'reset' && !exists) return reply(404, { error: '该邮箱尚未注册' });
+
+    return reply(200, await issueCode(email, scene));
+  }
+
+  if (path === '/users/reset-password' && method === 'POST') {
+    if (!emailConfig().enabled) return reply(503, { error: '邮箱验证尚未启用' });
+    const email = normalizeEmail(body.email);
+    const newPassword = String(body.password || body.newPassword || '');
+    if (!EMAIL_RE.test(email)) return reply(400, { error: '请填写正确的邮箱地址' });
+    if (newPassword.length < 8) return reply(400, { error: '新密码至少需要 8 位' });
+
+    const users = db.collection('users');
+    const found = await users.where({ email }).limit(1).get();
+    const user = found.data && found.data[0];
+    if (!user) return reply(404, { error: '该邮箱尚未注册' });
+
+    await consumeCode(email, 'reset', body.code);
+    await users.doc(user._id).update({
+      password: hashPassword(newPassword),
+      updatedAt: Date.now(),
+    });
+    return reply(200, { ok: true });
+  }
+
   /* ---------- 鉴权门槛 ----------
-   * 健康检查 / 注册 / 登录之外，所有接口都必须携带有效 token。
+   * 健康检查 / 注册 / 登录 / 发码 / 重置密码之外，所有接口都必须携带有效 token。
    * 无 token 时 uidOf() 返回 'public'，此前会返回 200 + 空数据，
    * 且 /users/:id 可匿名读取他人档案，这里统一收敛为 401。
    */

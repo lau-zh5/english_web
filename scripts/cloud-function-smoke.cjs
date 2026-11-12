@@ -8,6 +8,13 @@
 const Module = require('module');
 const path = require('path');
 
+// 前半段跑「未配置 SES」的原始注册流程；本机若恰好有云密钥也不能意外开启验证码
+for (const key of [
+  'SES_SECRET_ID', 'SES_SECRET_KEY', 'SES_FROM_ADDRESS', 'SES_TEMPLATE_ID',
+  'SES_REGION', 'SES_ENDPOINT', 'SES_REPLY_TO', 'EMAIL_VERIFY_ENABLED',
+  'TCB_SECRET_ID', 'TCB_SECRET_KEY',
+]) delete process.env[key];
+
 const store = {};
 let seq = 0;
 
@@ -202,6 +209,75 @@ async function check(label, event, expectStatus, verify) {
   );
   await check('新账号看不到旧账号的单词', ev('GET', '/words', undefined, reg2.token), 200, (d) => d.length === 0);
   await check('新账号看不到旧账号的单词书', ev('GET', '/wordbooks', undefined, reg2.token), 200, (d) => d.length === 0);
+
+  console.log('--- 邮箱验证码 / 腾讯云 SES（启用态） ---');
+  // emailConfig() 每次调用都读环境变量，无需重新 require 模块
+  process.env.SES_SECRET_ID = 'test-secret-id';
+  process.env.SES_SECRET_KEY = 'test-secret-key';
+  process.env.SES_FROM_ADDRESS = 'noreply@example.com';
+  process.env.SES_TEMPLATE_ID = '10001';
+
+  const originalFetch = globalThis.fetch;
+  let lastMail = null;
+  globalThis.fetch = async (url, options) => {
+    lastMail = { url, headers: options.headers, payload: JSON.parse(options.body) };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        Response: { MessageId: 'mock-message', RequestId: 'mock-request' },
+      }),
+    };
+  };
+
+  const mailUser = { username: 'mail_user', password: 'MailPass!2026', email: 'mail@example.com' };
+  const codeOf = () => JSON.parse(lastMail.payload.Template.TemplateData).code;
+
+  await check('健康接口报告邮箱验证已开启', ev('GET', '/health'), 200,
+    (d) => d.emailVerification && d.emailVerification.enabled === true);
+  await check('启用后不填邮箱注册被拒', ev('POST', '/users/register', { username: 'no_mail', password: 'MailPass!2026' }), 400);
+  await check('启用后无验证码注册被拒', ev('POST', '/users/register', mailUser), 400);
+  await check('注册验证码发送成功', ev('POST', '/users/send-code', { email: mailUser.email, scene: 'register' }), 200,
+    (d) => d.ok === true && d.expiresIn === 600);
+  await check('SES 走模板 + TC3 签名', ev('GET', '/health'), 200, () =>
+    Boolean(lastMail && lastMail.headers['X-TC-Action'] === 'SendEmail'
+      && String(lastMail.headers.Authorization).startsWith('TC3-HMAC-SHA256')
+      && lastMail.payload.Template.TemplateID === 10001
+      && /^\d{6}$/.test(codeOf())));
+  const regCode = codeOf();
+  await check('60 秒内重复发码被限流', ev('POST', '/users/send-code', { email: mailUser.email, scene: 'register' }), 429);
+  await check('错误验证码注册被拒', ev('POST', '/users/register', { ...mailUser, code: '000000' }), 400,
+    (d) => d.error === '验证码不正确');
+  const mailReg = await check('正确验证码注册成功', ev('POST', '/users/register', { ...mailUser, code: regCode }), 201,
+    (d) => Boolean(d.token));
+  await check('邮箱已验证标记写入', ev('GET', `/users/${mailReg.id}`, undefined, mailReg.token), 200,
+    (d) => d.emailVerified === true);
+  await check('重复邮箱被拒', ev('POST', '/users/register', { ...mailUser, username: 'mail_user3', code: regCode }), 409);
+  await check('已注册邮箱不能再发注册码', ev('POST', '/users/send-code', { email: mailUser.email, scene: 'register' }), 409);
+  await check('邮箱可以登录', ev('POST', '/users/login', { account: mailUser.email, password: mailUser.password }), 200,
+    (d) => d.username === 'mail_user');
+  await check('用户名仍可登录', ev('POST', '/users/login', { username: 'mail_user', password: mailUser.password }), 200);
+  await check('未注册邮箱不能找回', ev('POST', '/users/send-code', { email: 'nobody@example.com', scene: 'reset' }), 404);
+
+  await check('重置验证码发送成功', ev('POST', '/users/send-code', { email: mailUser.email, scene: 'reset' }), 200,
+    (d) => d.ok === true);
+  const resetCode = codeOf();
+  await check('弱新密码被拒', ev('POST', '/users/reset-password', { email: mailUser.email, code: resetCode, password: '123' }), 400);
+  await check('错误验证码不能重置', ev('POST', '/users/reset-password', { email: mailUser.email, code: '000000', password: 'NewMailPass!2026' }), 400);
+  await check('正确验证码重置密码', ev('POST', '/users/reset-password', { email: mailUser.email, code: resetCode, password: 'NewMailPass!2026' }), 200,
+    (d) => d.ok === true);
+  await check('旧密码失效', ev('POST', '/users/login', { account: mailUser.email, password: mailUser.password }), 401);
+  await check('新密码可登录', ev('POST', '/users/login', { account: mailUser.email, password: 'NewMailPass!2026' }), 200);
+
+  // 一键回退：SES 变量还在，但开关置 0 后注册流程恢复原样
+  process.env.EMAIL_VERIFY_ENABLED = '0';
+  await check('开关关闭后健康接口显示未启用', ev('GET', '/health'), 200,
+    (d) => d.emailVerification.enabled === false);
+  await check('开关关闭后发码接口返回 503', ev('POST', '/users/send-code', { email: 'x@example.com', scene: 'register' }), 503);
+  await check('开关关闭后无需验证码即可注册', ev('POST', '/users/register', { username: 'fallback_user', password: 'MailPass!2026' }), 201,
+    (d) => Boolean(d.token));
+
+  globalThis.fetch = originalFetch;
 
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed ? 1 : 0);
